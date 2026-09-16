@@ -7,7 +7,10 @@ load_dotenv(BASE_DIR / '.env')
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'mobix_production_ready_secret_key_889922')
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'mysql+pymysql://root:@localhost:3306/mobix_db')
+    db_url = os.getenv('DATABASE_URL', 'sqlite:///mobix.db')
+    if os.getenv('RENDER') and 'localhost' in db_url:
+        db_url = f"sqlite:///{BASE_DIR / 'mobix.db'}"
+    SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Uploads & Reports directory
