@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Business Analytics & Reports — MOBIX ERP{% endblock %}
+{% block header_title %}Analytics & Financial Reports{% endblock %}
+
+{% block content %}
+<!-- Top Metrics Summary -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Gross Revenue</div>
+      <div class="kpi-value" style="color: var(--primary);">₹{{ "{:,.2f}".format(total_revenue) }}</div>
+      <div class="kpi-sub" style="color: #10b981;">
+        <i class="fas fa-chart-line"></i> Total turnover across all orders
+      </div>
+    </div>
+    <div class="kpi-icon icon-sales">
+      <i class="fas fa-chart-pie"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Completed Orders</div>
+      <div class="kpi-value" style="color: #a855f7;">{{ total_orders }}</div>
+      <div class="kpi-sub">
+        <i class="fas fa-receipt"></i> Total retail & POS transactions
+      </div>
+    </div>
+    <div class="kpi-icon icon-repair">
+      <i class="fas fa-bag-shopping"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Registered Customers</div>
+      <div class="kpi-value" style="color: #f59e0b;">{{ total_customers }}</div>
+      <div class="kpi-sub">
+        <i class="fas fa-users"></i> Active customer database
+      </div>
+    </div>
+    <div class="kpi-icon icon-emi">
+      <i class="fas fa-user-group"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly Revenue Bar Chart & Top Brands Split -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 28px;">
+  <!-- Bar Chart -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-chart-simple" style="color: var(--primary);"></i>
+        <span>Monthly Revenue Growth (Last 6 Months)</span>
+      </div>
+      <span class="badge badge-primary">Dynamic Bar Chart</span>
+    </div>
+    <div class="card-body">
+      <div style="position: relative; height: 300px;">
+        <canvas id="monthlyRevenueChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Brands Ranking -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-trophy" style="color: #f59e0b;"></i>
+        <span>Top Selling Brands</span>
+      </div>
+    </div>
+    <div class="card-body" style="padding: 16px 20px;">
+      {% for b in brand_stats %}
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(2, 132, 199, 0.1); border: 1px solid rgba(2, 132, 199, 0.25); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--primary); font-size: 12px;">
+            {{ loop.index }}
+          </div>
+          <div>
+            <div style="font-weight: 700; color: var(--text-main);">{{ b.brand }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ b.units_sold }} devices sold</div>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-weight: 800; color: var(--primary);">₹{{ "{:,.0f}".format(b.revenue or 0) }}</div>
+          <span class="badge badge-success" style="font-size: 9px; padding: 1px 6px;">Top Brand</span>
+        </div>
+      </div>
+      {% else %}
+      <p style="text-align: center; color: var(--text-muted); padding: 30px;">No brand sales recorded yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const ctx = document.getElementById('monthlyRevenueChart');
+  if (!ctx) return;
+
+  fetch('/reports/api/monthly')
+    .then(r => r.json())
+    .then(data => {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: 'Monthly Revenue (₹)',
+            data: data.revenues,
+            backgroundColor: 'rgba(2, 132, 199, 0.75)',
+            borderColor: '#0284c7',
+            borderWidth: 2,
+            borderRadius: 8,
+            hoverBackgroundColor: '#0284c7'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleColor: '#38bdf8',
+              bodyColor: '#ffffff',
+              borderColor: '#cbd5e1',
+              borderWidth: 1,
+              callbacks: {
+                label: (ctx) => ` Revenue: ₹${ctx.raw.toLocaleString()}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#f1f5f9' },
+              ticks: { color: '#64748b' }
+            },
+            y: {
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                color: '#64748b',
+                callback: (val) => `₹${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`
+              }
+            }
+          }
+        }
+      });
+    })
+    .catch(err => console.error(err));
+});
+</script>
+{% endblock %}

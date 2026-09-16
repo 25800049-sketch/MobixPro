@@ -1,0 +1,685 @@
+{% extends 'base.html' %}
+
+{% block title %}Flagship Pre-Orders & Priority Queue — MOBIXPRO{% endblock %}
+{% block header_title %}Flagship Pre-Orders & Waitlist Management{% endblock %}
+
+{% block content %}
+<!-- Top Stats & KPI Counter -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Total Bookings</div>
+      <div class="kpi-value">{{ total_bookings }}</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Launch Pre-Orders</div>
+    </div>
+    <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;">
+      <i class="fas fa-ticket"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Token Advance Secured</div>
+      <div class="kpi-value" style="color: var(--success);">₹{{ "{:,.0f}".format(total_advance_collected) }}</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Non-Refundable Credit</div>
+    </div>
+    <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--success);">
+      <i class="fas fa-sack-dollar"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Awaiting Stock</div>
+      <div class="kpi-value" style="color: var(--warning);">{{ awaiting_stock_count }}</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">In FIFO Queue</div>
+    </div>
+    <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--warning);">
+      <i class="fas fa-hourglass-half"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card" style="border-color: rgba(16, 185, 129, 0.4); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.12);">
+    <div>
+      <div class="kpi-title" style="color: var(--success);">Ready for Pickup</div>
+      <div class="kpi-value" style="color: var(--success);">{{ ready_pickup_count }}</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Handset Reserved</div>
+    </div>
+    <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.2); color: var(--success);">
+      <i class="fas fa-circle-check"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Lost Sales Demands</div>
+      <div class="kpi-value" style="color: #a855f7;">{{ lost_sales_pending_count }}</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Out-of-Stock Requests</div>
+    </div>
+    <div class="kpi-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+      <i class="fas fa-bell"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Main Action Header & Toolbar -->
+<div class="card" style="margin-bottom: 20px;">
+  <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+    <!-- Left: Filter & Search -->
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <form method="GET" action="{{ url_for('preorders.index') }}" style="display: flex; gap: 8px;">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Search booking #, customer, model..." class="form-control" style="width: 260px; padding: 7px 12px; font-size: 12.5px;">
+        {% if selected_status %}<input type="hidden" name="status" value="{{ selected_status }}">{% endif %}
+        {% if selected_brand %}<input type="hidden" name="brand" value="{{ selected_brand }}">{% endif %}
+        <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-search"></i></button>
+      </form>
+
+      <!-- Status Pills -->
+      <a href="{{ url_for('preorders.index', q=search_query, brand=selected_brand) }}" class="btn btn-sm {% if not selected_status %}btn-primary{% else %}btn-secondary{% endif %}">
+        All ({{ total_bookings }})
+      </a>
+      <a href="{{ url_for('preorders.index', status='Booked', q=search_query, brand=selected_brand) }}" class="btn btn-sm {% if selected_status == 'Booked' %}btn-primary{% else %}btn-secondary{% endif %}">
+        Queue Waitlist ({{ awaiting_stock_count }})
+      </a>
+      <a href="{{ url_for('preorders.index', status='Allocated', q=search_query, brand=selected_brand) }}" class="btn btn-sm {% if selected_status == 'Allocated' %}btn-primary{% else %}btn-secondary{% endif %}">
+        Ready for Pickup ({{ ready_pickup_count }})
+      </a>
+      <a href="{{ url_for('preorders.index', status='Fulfilled', q=search_query, brand=selected_brand) }}" class="btn btn-sm {% if selected_status == 'Fulfilled' %}btn-primary{% else %}btn-secondary{% endif %}">
+        Fulfilled ({{ fulfilled_count }})
+      </a>
+    </div>
+
+    <!-- Right: Primary Action Buttons -->
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <!-- Auto Allocate incoming stock FIFO -->
+      <form method="POST" action="{{ url_for('preorders.auto_allocate') }}" onsubmit="return confirm('Auto-allocate available in-stock inventory to waiting pre-orders by queue priority?');">
+        <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--primary); border-color: rgba(2, 132, 199, 0.3);">
+          <i class="fas fa-bolt"></i> Auto-Allocate Stock
+        </button>
+      </form>
+
+      <!-- Public Self-Booking Portal Link -->
+      <a href="{{ url_for('prebook.public_showcase') }}" target="_blank" class="btn btn-secondary btn-sm" style="color: #6366f1; border-color: rgba(99, 102, 241, 0.3);">
+        <i class="fas fa-arrow-up-right-from-square"></i> Customer Pre-Book Portal
+      </a>
+
+      <!-- Quick Lost Sale Logger -->
+      <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('lostSaleModal')">
+        <i class="fas fa-bell"></i> Log Lost Sale
+      </button>
+
+      <!-- New Pre-Booking Button -->
+      <button type="button" class="btn btn-primary btn-sm" onclick="openModal('createBookingModal')" style="font-weight: 700;">
+        <i class="fas fa-plus"></i> New Pre-Booking
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Navigation: Pre-Orders vs Lost Sales -->
+<div style="display: flex; gap: 8px; margin-bottom: 16px;">
+  <button id="tabBtnPreorders" class="btn btn-primary btn-sm" onclick="switchPreorderTab('preorders')">
+    <i class="fas fa-list-ol"></i> Flagship Pre-Orders & Priority Queue ({{ bookings|length }})
+  </button>
+  <button id="tabBtnLostSales" class="btn btn-secondary btn-sm" onclick="switchPreorderTab('lostsales')">
+    <i class="fas fa-chart-line-down"></i> Lost Sales & Stockout Requests ({{ lost_sales|length }})
+  </button>
+</div>
+
+<!-- TAB 1: PRE-ORDERS QUEUE LIST -->
+<div id="tabContentPreorders" class="card">
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 85px;">Queue</th>
+            <th>Booking ID</th>
+            <th>Customer</th>
+            <th>Flagship Device</th>
+            <th>Advance Paid</th>
+            <th>Allocated Device</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in bookings %}
+          <tr>
+            <!-- Queue Rank -->
+            <td>
+              {% if b.status == 'Fulfilled' %}
+              <span class="badge" style="background: rgba(100, 116, 139, 0.2); color: #64748b; font-size: 11px;">Done</span>
+              {% elif b.status == 'Cancelled' %}
+              <span class="badge badge-danger" style="font-size: 10px;">Cancelled</span>
+              {% elif b.queue_priority == 1 %}
+              <span class="badge" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 800; font-size: 11px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);">
+                <i class="fas fa-crown"></i> #01 VIP
+              </span>
+              {% elif b.queue_priority <= 3 %}
+              <span class="badge" style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; font-weight: 800; font-size: 11px;">
+                #{{ "{:02d}".format(b.queue_priority) }}
+              </span>
+              {% else %}
+              <span class="badge badge-secondary" style="font-size: 11px; font-weight: 700;">
+                #{{ "{:02d}".format(b.queue_priority) }}
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- Booking No & Date -->
+            <td>
+              <div style="font-weight: 700; color: var(--primary); font-size: 13px;">{{ b.booking_no }}</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">{{ b.created_at.strftime('%d-%b-%Y') }}</div>
+              {% if b.booking_source == 'Online_Self_Book' %}
+              <span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #6366f1; font-size: 9.5px; padding: 1px 5px; margin-top: 3px;">
+                <i class="fas fa-globe"></i> Online
+              </span>
+              {% else %}
+              <span class="badge" style="background: rgba(100, 116, 139, 0.15); color: var(--text-muted); font-size: 9.5px; padding: 1px 5px; margin-top: 3px;">
+                <i class="fas fa-store"></i> In-Store
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- Customer -->
+            <td>
+              <div style="font-weight: 700; color: var(--text-main);">{{ b.customer.name }}</div>
+              <div style="font-size: 12px; color: var(--text-muted);"><i class="fas fa-phone" style="font-size: 10px;"></i> {{ b.customer.phone }}</div>
+              {% if b.customer.email %}
+              <div style="font-size: 11px; color: var(--primary); margin-top: 2px;">
+                <i class="fas fa-envelope" style="font-size: 9px;"></i> {{ b.customer.email }}
+              </div>
+              {% else %}
+              <div style="font-size: 10px; color: var(--warning); margin-top: 2px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 9px;"></i> No email
+              </div>
+              {% endif %}
+            </td>
+
+            <!-- Flagship Device -->
+            <td>
+              <div style="font-weight: 700; color: var(--text-main);">{{ b.brand }} {{ b.model }}</div>
+              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">{{ b.variant }}</div>
+              {% if b.expected_price and b.expected_price > 0 %}
+              <div style="font-size: 11px; color: var(--primary); font-weight: 600; margin-top: 2px;">Est: ₹{{ "{:,.0f}".format(b.expected_price) }}</div>
+              {% endif %}
+            </td>
+
+            <!-- Advance Paid -->
+            <td>
+              <div style="font-weight: 800; color: var(--success); font-size: 14px;">₹{{ "{:,.0f}".format(b.token_advance) }}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ b.payment_mode }} ({{ b.payment_status }})</div>
+              <div style="font-size: 10.5px; color: var(--warning); margin-top: 2px;">Bal: ₹{{ "{:,.0f}".format(b.remaining_balance) }}</div>
+            </td>
+
+            <!-- Allocated Device -->
+            <td>
+              {% if b.allocated_mobile %}
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="badge badge-success" style="font-size: 10px; padding: 2px 6px;">
+                  <i class="fas fa-check"></i> Handset Reserved
+                </span>
+              </div>
+              <div style="font-weight: 600; font-size: 12px; margin-top: 4px; color: var(--text-main);">{{ b.allocated_mobile.brand }} {{ b.allocated_mobile.model }}</div>
+              <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">IMEI: {{ b.allocated_mobile.imei_1 }}</div>
+              {% elif b.status == 'Fulfilled' %}
+              <span style="font-size: 12px; color: var(--text-muted);"><i class="fas fa-receipt"></i> Bill #{{ b.invoice.invoice_number if b.invoice else 'Billed' }}</span>
+              {% else %}
+              <span style="font-size: 12px; color: var(--warning); font-weight: 600;">
+                <i class="fas fa-clock"></i> Waiting for Stock
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- Status Pill -->
+            <td>
+              {% if b.status == 'Allocated' %}
+              <span class="badge badge-success" style="box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);">
+                <i class="fas fa-circle-check"></i> Ready for Pickup
+              </span>
+              {% elif b.status == 'Booked' %}
+              <span class="badge badge-warning">
+                <i class="fas fa-hourglass-start"></i> Waiting Stock
+              </span>
+              {% elif b.status == 'Fulfilled' %}
+              <span class="badge badge-info">
+                <i class="fas fa-handshake"></i> Fulfilled
+              </span>
+              {% elif b.status == 'Cancelled' %}
+              <span class="badge badge-danger">Cancelled</span>
+              {% endif %}
+            </td>
+
+            <!-- Actions -->
+            <td style="text-align: right;">
+              <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
+                <!-- Fulfill at POS Button -->
+                {% if b.status in ['Allocated', 'Booked'] %}
+                <a href="{{ url_for('pos.billing', preorder_id=b.id) }}" class="btn btn-primary btn-sm" style="font-size: 11.5px; padding: 4px 10px; font-weight: 700;" title="Convert to POS Sale & deduct advance">
+                  <i class="fas fa-cash-register"></i> Fulfill at POS
+                </a>
+                {% endif %}
+
+                <!-- WhatsApp Stock Alert / Confirmation -->
+                {% if whatsapp_urls.get(b.id) %}
+                <a href="{{ whatsapp_urls[b.id] }}" target="_blank" class="btn btn-success btn-sm" style="padding: 4px 8px;" title="Send WhatsApp Update">
+                  <i class="fab fa-whatsapp"></i>
+                </a>
+                {% endif %}
+
+                <!-- Gmail Notification Button (Pre-Order or Stock Arrived) -->
+                {% if b.customer and b.customer.email %}
+                <form method="POST" action="{{ url_for('preorders.send_email_notification', booking_id=b.id) }}" style="display: inline;" onsubmit="return confirm('Dispatch notification to {{ b.customer.email }} via Gmail?');">
+                  <button type="submit" class="btn btn-sm" style="padding: 4px 8px; background: rgba(2, 132, 199, 0.12); border: 1px solid rgba(2, 132, 199, 0.3); color: var(--primary);" title="Send {% if b.status == 'Allocated' %}Stock Arrived Alert{% else %}Pre-Order Confirmation{% endif %} via Gmail">
+                    <i class="fas fa-envelope"></i>
+                  </button>
+                </form>
+                {% endif %}
+
+                <!-- Printable Token Slip -->
+                <a href="{{ url_for('preorders.booking_receipt', booking_id=b.id) }}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 4px 8px;" title="Print Token Slip">
+                  <i class="fas fa-print"></i>
+                </a>
+
+                <!-- Manual Allocation Dropdown Trigger -->
+                {% if b.status == 'Booked' %}
+                <button type="button" class="btn btn-secondary btn-sm" style="padding: 4px 8px;" onclick="openManualAllocateModal({{ b.id }}, '{{ b.brand }} {{ b.model }}')" title="Assign Specific Handset">
+                  <i class="fas fa-link"></i>
+                </button>
+                {% endif %}
+
+                <!-- Cancel Booking Option -->
+                {% if b.status in ['Booked', 'Allocated'] %}
+                <button type="button" class="btn btn-outline-danger btn-sm" style="padding: 4px 10px; font-size: 11px; font-weight: 700; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.08); border-radius: 6px;" onclick="openCancelBookingModal({{ b.id }}, '{{ b.booking_no }}', {{ b.token_advance }})" title="Cancel Pre-Order & Record Refund">
+                  <i class="fas fa-ban"></i> Cancel
+                </button>
+                {% elif b.status == 'Cancelled' %}
+                <span class="text-muted" style="font-size: 10.5px; padding: 2px 6px;"><i class="fas fa-ban"></i> Cancelled</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+              <i class="fas fa-ticket" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px; display: block;"></i>
+              No pre-orders found matching your filters. Click <strong>+ New Pre-Booking</strong> to register a customer reservation.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: LOST SALES & WANTED DEVICES -->
+<div id="tabContentLostSales" class="card" style="display: none;">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-chart-line-down"></i> Customer Stockout Requests & Lost Demand</div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('lostSaleModal')">
+      <i class="fas fa-plus"></i> Capture Out-of-Stock Demand
+    </button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Requested Model</th>
+            <th>Target Budget</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ls in lost_sales %}
+          <tr>
+            <td style="font-size: 12px; color: var(--text-muted);">{{ ls.created_at.strftime('%d-%b-%Y') }}</td>
+            <td>
+              <div style="font-weight: 700;">{{ ls.customer_name }}</div>
+              <div style="font-size: 12px; color: var(--text-muted);"><i class="fas fa-phone" style="font-size: 10px;"></i> {{ ls.customer_phone }}</div>
+            </td>
+            <td>
+              <div style="font-weight: 700; color: var(--primary);">{{ ls.brand }} {{ ls.model }}</div>
+              <div style="font-size: 11.5px; color: var(--text-muted);">{{ ls.variant or 'Any Variant' }}</div>
+            </td>
+            <td>
+              {% if ls.max_budget and ls.max_budget > 0 %}
+              <div style="font-weight: 700;">₹{{ "{:,.0f}".format(ls.max_budget) }}</div>
+              {% else %}
+              <span style="color: var(--text-muted); font-size: 12px;">Market MOP</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('preorders.update_lost_sale_status', request_id=ls.id) }}" style="display: inline;">
+                <select name="status" onchange="this.form.submit()" class="form-select" style="padding: 3px 8px; font-size: 11.5px; width: auto; font-weight: 600;">
+                  <option value="Pending" {% if ls.status == 'Pending' %}selected{% endif %}>⏳ Pending Restock</option>
+                  <option value="Notified" {% if ls.status == 'Notified' %}selected{% endif %}>💬 Customer Notified</option>
+                  <option value="Purchased" {% if ls.status == 'Purchased' %}selected{% endif %}>✅ Purchased</option>
+                  <option value="Cancelled" {% if ls.status == 'Cancelled' %}selected{% endif %}>❌ Cancelled</option>
+                </select>
+              </form>
+            </td>
+            <td style="font-size: 12px; color: var(--text-muted); max-width: 200px;">{{ ls.notes or '-' }}</td>
+            <td style="text-align: right;">
+              {% set wa_text = "Hello " ~ ls.customer_name ~ ", regarding your inquiry for " ~ ls.brand ~ " " ~ ls.model ~ " at MOBIX - fresh stock has arrived! Reply to reserve your unit." %}
+              <a href="https://wa.me/91{{ ls.customer_phone }}?text={{ wa_text|urlencode }}" target="_blank" class="btn btn-success btn-sm" style="padding: 4px 8px;" title="WhatsApp Restock Notification">
+                <i class="fab fa-whatsapp"></i> Notify
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">
+              No lost sales inquiries recorded. Use <strong>Capture Out-of-Stock Demand</strong> when a customer asks for an unavailable device.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL 1: NEW PRE-BOOKING ================= -->
+<div class="modal-overlay" id="createBookingModal">
+  <div class="modal-box" style="max-width: 620px;">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-ticket"></i> New Flagship Pre-Booking</div>
+      <button onclick="closeModal('createBookingModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('preorders.create_booking') }}" style="padding: 24px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Customer Name *</label>
+          <input type="text" name="customer_name" id="preorderCustomerName" required placeholder="Full Name" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mobile Phone *</label>
+          <input type="tel" name="customer_phone" id="preorderCustomerPhone" required placeholder="10-digit Mobile" class="form-control" onblur="lookupPreorderCustomer(this.value)">
+          <div id="customerLookupBadge" style="font-size: 11px; color: var(--success); margin-top: 3px; display: none;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-envelope"></i> Email (Gmail Alerts)</label>
+          <input type="email" name="customer_email" id="preorderCustomerEmail" placeholder="customer@gmail.com" class="form-control">
+          <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Receives instant pre-order pass & arrival emails</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;">
+        <div class="form-group">
+          <label class="form-label">Brand *</label>
+          <select name="brand" id="bookingBrandSelect" class="form-select" required onchange="populatePreorderModels()">
+            <option value="Apple">Apple iPhone</option>
+            <option value="Samsung">Samsung Galaxy</option>
+            <option value="OnePlus">OnePlus</option>
+            <option value="Google">Google Pixel</option>
+            <option value="Xiaomi">Xiaomi / Redmi</option>
+            <option value="Vivo">Vivo</option>
+            <option value="Other">Other Brand</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Flagship Model *</label>
+          <input type="text" name="model" id="bookingModelInput" required placeholder="e.g. iPhone 16 Pro Max, S25 Ultra" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;">
+        <div class="form-group">
+          <label class="form-label">Storage Capacity</label>
+          <select name="storage" class="form-select">
+            <option value="128GB">128GB</option>
+            <option value="256GB" selected>256GB</option>
+            <option value="512GB">512GB</option>
+            <option value="1TB">1TB</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Preferred Color</label>
+          <input type="text" name="color" placeholder="e.g. Desert Titanium, Titanium Silver" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 10px;">
+        <div class="form-group">
+          <label class="form-label">Est. Price (₹)</label>
+          <input type="number" name="expected_price" value="134999" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Token Advance (₹) *</label>
+          <input type="number" name="token_advance" value="5000" min="500" required class="form-control" style="font-weight: 700; color: var(--primary);">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Mode</label>
+          <select name="payment_mode" class="form-select">
+            <option value="UPI">⚡ UPI (GPay/PhonePe)</option>
+            <option value="Cash">💵 Cash</option>
+            <option value="Card">💳 Card</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label class="form-label">Expected Launch / Delivery Date</label>
+        <input type="date" name="expected_delivery_date" class="form-control">
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label class="form-label">Special Notes / Customer Requests</label>
+        <textarea name="notes" rows="2" placeholder="e.g. Wants tempered glass pre-installed upon unboxing" class="form-control"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('createBookingModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 700;">
+          <i class="fas fa-check"></i> Register Booking & Print Voucher
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL 2: MANUAL DEVICE ALLOCATION ================= -->
+<div class="modal-overlay" id="manualAllocateModal">
+  <div class="modal-box" style="max-width: 520px;">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-link"></i> Allocate In-Stock Device</div>
+      <button onclick="closeModal('manualAllocateModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form id="manualAllocateForm" method="POST" action="" style="padding: 24px;">
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        Assign an available handset from store stock to <strong id="modalAllocDeviceLabel">this booking</strong>. The device will be marked <span class="badge badge-success">reserved</span>.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Select Available Handset (IMEI)</label>
+        <select name="mobile_id" required class="form-select" style="font-size: 13px;">
+          <option value="">-- Choose In-Stock Phone --</option>
+          {% for m in available_mobiles %}
+          <option value="{{ m.id }}">{{ m.brand }} {{ m.model }} ({{ m.ram }}/{{ m.storage }}) • {{ m.color }} • IMEI: {{ m.imei_1 }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('manualAllocateModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-check"></i> Assign Device & Mark Reserved
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL 3: LOG LOST SALE ================= -->
+<div class="modal-overlay" id="lostSaleModal">
+  <div class="modal-box" style="max-width: 520px;">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-bell"></i> Log Out-of-Stock Customer Request</div>
+      <button onclick="closeModal('lostSaleModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('preorders.create_lost_sale') }}" style="padding: 24px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Customer Name *</label>
+          <input type="text" name="customer_name" required placeholder="Name" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp Mobile *</label>
+          <input type="tel" name="customer_phone" required placeholder="10-digit Phone" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+        <div class="form-group">
+          <label class="form-label">Brand *</label>
+          <input type="text" name="brand" required placeholder="e.g. OnePlus, Apple" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Model Name *</label>
+          <input type="text" name="model" required placeholder="e.g. OnePlus 12, S24+" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+        <div class="form-group">
+          <label class="form-label">Color / Variant</label>
+          <input type="text" name="variant" placeholder="e.g. Emerald Green 256GB" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Customer Budget (₹)</label>
+          <input type="number" name="max_budget" placeholder="Max price willing to pay" class="form-control">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" rows="2" placeholder="e.g. Customer urgently needed before weekend" class="form-control"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('lostSaleModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-check"></i> Save Inquiry & Monitor Stock
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL 4: CANCEL BOOKING & REFUND ================= -->
+<div class="modal-overlay" id="cancelBookingModal">
+  <div class="modal-box" style="max-width: 480px;">
+    <div class="card-header">
+      <div class="card-title" style="color: var(--danger);"><i class="fas fa-ban"></i> Cancel Pre-Order & Refund</div>
+      <button onclick="closeModal('cancelBookingModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form id="cancelBookingForm" method="POST" action="" style="padding: 24px;">
+      <p style="font-size: 13px; color: var(--text-main); margin-bottom: 12px;">
+        Are you sure you want to cancel <strong id="cancelModalBookingNo">this booking</strong>?
+      </p>
+      <div style="padding: 12px; background: rgba(239, 68, 68, 0.08); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); margin-bottom: 16px;">
+        <div style="font-size: 12px; color: var(--text-muted);">Token Advance to Refund:</div>
+        <div id="cancelModalAdvanceVal" style="font-size: 18px; font-weight: 800; color: var(--danger); margin-top: 2px;">₹0.00</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Any reserved handset will be immediately released back to store stock.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Cancellation Reason</label>
+        <input type="text" name="reason" value="Customer changed mind / bought elsewhere" class="form-control" required>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('cancelBookingModal')">Back</button>
+        <button type="submit" class="btn btn-danger btn-sm">
+          <i class="fas fa-check"></i> Confirm Cancellation & Refund
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function switchPreorderTab(tab) {
+    const tabPreorders = document.getElementById('tabContentPreorders');
+    const tabLostSales = document.getElementById('tabContentLostSales');
+    const btnPreorders = document.getElementById('tabBtnPreorders');
+    const btnLostSales = document.getElementById('tabBtnLostSales');
+
+    if (tab === 'preorders') {
+      tabPreorders.style.display = 'block';
+      tabLostSales.style.display = 'none';
+      btnPreorders.className = 'btn btn-primary btn-sm';
+      btnLostSales.className = 'btn btn-secondary btn-sm';
+    } else {
+      tabPreorders.style.display = 'none';
+      tabLostSales.style.display = 'block';
+      btnPreorders.className = 'btn btn-secondary btn-sm';
+      btnLostSales.className = 'btn btn-primary btn-sm';
+    }
+  }
+
+  function openManualAllocateModal(bookingId, deviceLabel) {
+    document.getElementById('manualAllocateForm').action = `/preorders/${bookingId}/allocate`;
+    document.getElementById('modalAllocDeviceLabel').textContent = deviceLabel;
+    openModal('manualAllocateModal');
+  }
+
+  function openCancelBookingModal(bookingId, bookingNo, advanceAmount) {
+    document.getElementById('cancelBookingForm').action = `/preorders/${bookingId}/cancel`;
+    document.getElementById('cancelModalBookingNo').textContent = `#${bookingNo}`;
+    document.getElementById('cancelModalAdvanceVal').textContent = `₹${parseFloat(advanceAmount).toLocaleString()}`;
+    openModal('cancelBookingModal');
+  }
+
+  function populatePreorderModels() {
+    const brand = document.getElementById('bookingBrandSelect').value;
+    const modelInput = document.getElementById('bookingModelInput');
+    const presets = {
+      'Apple': 'iPhone 16 Pro Max',
+      'Samsung': 'Galaxy S25 Ultra',
+      'OnePlus': 'OnePlus 13 5G',
+      'Google': 'Pixel 9 Pro XL',
+      'Xiaomi': 'Xiaomi 15 Pro',
+      'Vivo': 'Vivo X200 Pro'
+    };
+    if (presets[brand]) {
+      modelInput.value = presets[brand];
+    }
+  }
+
+  function lookupPreorderCustomer(phone) {
+    if (!phone || phone.trim().length < 4) return;
+    const badge = document.getElementById('customerLookupBadge');
+    fetch('/customers/api/lookup?phone=' + encodeURIComponent(phone.trim()))
+      .then(r => r.json())
+      .then(d => {
+        if (d.found && d.customer) {
+          const nameInput = document.getElementById('preorderCustomerName');
+          const emailInput = document.getElementById('preorderCustomerEmail');
+          if (nameInput && (!nameInput.value || nameInput.value.trim() === '')) {
+            nameInput.value = d.customer.name || '';
+          }
+          if (emailInput && (!emailInput.value || emailInput.value.trim() === '')) {
+            emailInput.value = d.customer.email || '';
+          }
+          if (badge) {
+            badge.style.display = 'block';
+            badge.innerHTML = `<i class="fas fa-check-circle"></i> Found: <b>${d.customer.name}</b>` + (d.customer.email ? ` (${d.customer.email})` : '');
+          }
+        } else if (badge) {
+          badge.style.display = 'none';
+        }
+      })
+      .catch(e => console.log('lookup error', e));
+  }
+</script>
+{% endblock %}

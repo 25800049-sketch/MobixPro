@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}EMI Contract #{{ account.id }} — MOBIX{% endblock %}
+{% block header_title %}EMI Repayment Schedule & Ledger{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+  <a href="{{ url_for('emi.emi_list') }}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-arrow-left"></i> Back to EMI List
+  </a>
+</div>
+
+<!-- Customer Credit & Risk Profile Card -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="card-title">
+      <i class="fas fa-chart-pie" style="color: var(--primary);"></i>
+      <span>Customer Credit & Risk Profile</span>
+    </div>
+    {% if credit_profile %}
+    <span class="badge {{ credit_profile.badge_class }}" style="font-size: 13px; font-weight: 700; padding: 6px 12px;">
+      <i class="fas {% if credit_profile.tier == 'Tier-A' %}fa-shield-check{% elif credit_profile.tier == 'Tier-B' %}fa-shield-halved{% else %}fa-triangle-exclamation{% endif %}"></i>
+      {{ credit_profile.tier }}
+    </span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if credit_profile %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">CIBIL-Style Credit Score</div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+          <span style="font-size: 34px; font-weight: 800; font-family: monospace; color: {% if credit_profile.score >= 750 %}var(--success){% elif credit_profile.score >= 600 %}var(--warning){% else %}var(--danger){% endif %};">
+            {{ credit_profile.score }}
+          </span>
+          <span style="font-size: 14px; color: var(--text-muted); font-weight: 600;">/ 900</span>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Risk Category</div>
+        <div style="font-size: 14px; font-weight: 700; margin-top: 4px; color: {% if credit_profile.score >= 750 %}var(--success){% elif credit_profile.score >= 600 %}var(--warning){% else %}var(--danger){% endif %};">
+          {% if credit_profile.score >= 750 %}Excellent Repayer{% elif credit_profile.score >= 600 %}Moderate Risk{% else %}High Default Risk{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Score Progress Bar -->
+    <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-bottom: 18px; position: relative;">
+      {% set score_pct = [((credit_profile.score - 300) / 600 * 100)|round, 5]|max %}
+      <div style="width: {{ score_pct }}%; height: 100%; background: {% if credit_profile.score >= 750 %}linear-gradient(90deg, #10b981, #059669){% elif credit_profile.score >= 600 %}linear-gradient(90deg, #f59e0b, #d97706){% else %}linear-gradient(90deg, #ef4444, #b91c1c){% endif %}; border-radius: 999px; transition: width 0.6s ease;"></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 12px;">
+      <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <span style="color: var(--text-muted); display: block;">On-Time Repayment</span>
+        <strong style="font-size: 14px; color: var(--text-main);">{{ credit_profile.on_time_ratio }}%</strong>
+      </div>
+      <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <span style="color: var(--text-muted); display: block;">Total Device Purchases</span>
+        <strong style="font-size: 14px; color: var(--text-main);">{{ credit_profile.total_purchases }} orders</strong>
+      </div>
+      <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <span style="color: var(--text-muted); display: block;">Active EMIs</span>
+        <strong style="font-size: 14px; color: var(--text-main);">{{ credit_profile.active_emis }} active</strong>
+      </div>
+      <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <span style="color: var(--text-muted); display: block;">Min. Req. Down Payment</span>
+        <strong style="font-size: 14px; color: var(--primary);">{{ credit_profile.down_payment_min_pct }}% of value</strong>
+      </div>
+    </div>
+    {% else %}
+    <div style="color: var(--text-muted); font-size: 13px;">No credit history recorded for this customer yet.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Account Overview Card -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fas fa-id-card"></i>
+      <span>Customer Contract: {{ account.customer.name }} ({{ account.customer.phone }})</span>
+    </div>
+    <span class="badge {% if account.status == 'Completed' %}badge-success{% elif account.status == 'Overdue' %}badge-danger{% else %}badge-warning{% endif %}" style="font-size: 13px; padding: 6px 14px;">
+      {{ account.status }}
+    </span>
+  </div>
+  <div class="card-body">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px;">
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Invoice Reference</div>
+        <div style="font-size: 15px; font-weight: 700; margin-top: 2px;">
+          <a href="{{ url_for('pos.view_invoice', invoice_id=account.invoice_id) }}">#{{ account.invoice.invoice_number }}</a>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Device Total Price</div>
+        <div style="font-size: 15px; font-weight: 700; margin-top: 2px;">₹{{ "{:,.2f}".format(account.total_amount) }}</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Down Payment Paid</div>
+        <div style="font-size: 15px; font-weight: 700; margin-top: 2px; color: var(--success);">₹{{ "{:,.2f}".format(account.down_payment) }}</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Principal Remaining</div>
+        <div style="font-size: 15px; font-weight: 700; margin-top: 2px; color: var(--danger);">₹{{ "{:,.2f}".format(account.principal_remaining) }}</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Monthly Installment</div>
+        <div style="font-size: 15px; font-weight: 700; margin-top: 2px; color: var(--primary);">₹{{ "{:,.2f}".format(account.emi_amount) }} / mo</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Overdue Late Penalty</div>
+        <div style="font-size: 15px; font-weight: 700; margin-top: 2px; color: var(--warning);">₹{{ "{:,.0f}".format(account.fine_per_cycle) }} per missed cycle</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Installment Schedule Table -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-list-ol"></i> {{ account.tenure_months }}-Month Installment Breakdown</div>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Installment #</th>
+            <th>Due Date</th>
+            <th>Base EMI</th>
+            <th>Overdue Fine</th>
+            <th>Total Amount Due</th>
+            <th>Amount Paid</th>
+            <th>Payment Date & Mode</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inst in account.installments %}
+          <tr {% if inst.status == 'overdue' %}style="background: rgba(239, 68, 68, 0.06);"{% endif %}>
+            <td><strong>Month {{ inst.installment_no }}</strong></td>
+            <td>
+              <strong>{{ inst.due_date.strftime('%d-%b-%Y') }}</strong>
+            </td>
+            <td>₹{{ "{:,.2f}".format(inst.amount) }}</td>
+            <td style="color: var(--danger); font-weight: 700;">
+              {% if inst.fine_amount > 0 %}
+                + ₹{{ "{:,.2f}".format(inst.fine_amount) }}
+              {% else %}
+                ₹0.00
+              {% endif %}
+            </td>
+            <td style="font-weight: 800; color: var(--text-main); font-size: 14px;">
+              ₹{{ "{:,.2f}".format(inst.total_due) }}
+            </td>
+            <td style="color: var(--success); font-weight: 600;">
+              ₹{{ "{:,.2f}".format(inst.paid_amount) }}
+            </td>
+            <td>
+              {% if inst.payment_date %}
+                {{ inst.payment_date.strftime('%d-%b-%Y') }} ({{ inst.payment_mode or 'Cash' }})
+              {% else %}
+                <span style="color: var(--text-muted);">Unpaid</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {% if inst.status == 'paid' %}badge-success{% elif inst.status == 'overdue' %}badge-danger{% else %}badge-warning{% endif %}">
+                {{ inst.status.capitalize() }}
+              </span>
+            </td>
+            <td>
+              {% if inst.status != 'paid' %}
+              <button class="btn btn-primary btn-sm" onclick="openPayModal({{ inst.id }}, {{ inst.installment_no }}, {{ inst.total_due }})">
+                <i class="fas fa-hand-holding-dollar"></i> Collect
+              </button>
+              {% else %}
+              <span style="color: var(--success); font-size: 12px;"><i class="fas fa-check-circle"></i> Settled</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Collect Payment -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal-box" style="max-width: 440px;">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-wallet"></i> Collect Installment Payment</div>
+      <button onclick="closeModal('payModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form id="payForm" method="POST" style="padding: 24px;">
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        Recording payment for <strong id="payModalTitle" style="color: var(--text-main);"></strong>.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Payment Amount (₹)</label>
+        <input type="number" step="0.01" id="payAmountInput" name="paid_amount" class="form-control" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Payment Mode</label>
+        <select name="payment_mode" class="form-select">
+          <option value="UPI">⚡ UPI (GPay / PhonePe / QR)</option>
+          <option value="Cash">💵 Cash</option>
+          <option value="Card">💳 Credit / Debit Card</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('payModal')">Cancel</button>
+        <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Record Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openPayModal(instId, instNo, dueAmount) {
+    const form = document.getElementById('payForm');
+    form.action = `/emi/pay-installment/${instId}`;
+    document.getElementById('payModalTitle').textContent = `Installment #${instNo}`;
+    document.getElementById('payAmountInput').value = dueAmount;
+    openModal('payModal');
+  }
+</script>
+{% endblock %}

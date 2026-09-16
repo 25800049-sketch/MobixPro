@@ -1,0 +1,541 @@
+{% extends 'base.html' %}
+
+{% block title %}Mobile Repair Tracking — MOBIX{% endblock %}
+{% block header_title %}Mobile Service & Repair Pipeline{% endblock %}
+
+{% block content %}
+<!-- Technician Daily Attendance Status Widget -->
+<div class="card" style="margin-bottom: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; background: linear-gradient(135deg, rgba(2, 132, 199, 0.05), rgba(99, 102, 241, 0.05)); border: 1px solid rgba(2, 132, 199, 0.2); border-radius: var(--radius-md);">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--primary), #6366f1); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);">
+      <i class="fas fa-clipboard-user"></i>
+    </div>
+    <div>
+      <div style="font-size: 13.5px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span>Technician Attendance ({{ today_date.strftime('%A, %d %B %Y') if today_date else 'Today' }}):</span>
+        {% if today_attendance %}
+          {% if today_attendance.status == 'present' %}
+            <span class="badge badge-success" style="font-size: 11px;"><i class="fas fa-check-circle"></i> Present</span>
+          {% elif today_attendance.status == 'half_day' %}
+            <span class="badge badge-warning" style="font-size: 11px;"><i class="fas fa-adjust"></i> Half Day</span>
+          {% elif today_attendance.status == 'leave' %}
+            <span class="badge badge-info" style="font-size: 11px;"><i class="fas fa-calendar-check"></i> Paid Leave</span>
+          {% elif today_attendance.status == 'absent' %}
+            <span class="badge badge-danger" style="font-size: 11px;"><i class="fas fa-times-circle"></i> Absent</span>
+          {% endif %}
+          {% if today_attendance.time_in %}
+            <span style="font-size: 12px; color: var(--text-muted);"><i class="fas fa-clock"></i> In: {{ today_attendance.time_in }}</span>
+          {% endif %}
+          {% if today_attendance.time_out %}
+            <span style="font-size: 12px; color: var(--text-muted);"><i class="fas fa-clock"></i> Out: {{ today_attendance.time_out }}</span>
+          {% endif %}
+        {% else %}
+          <span class="badge badge-secondary" style="font-size: 11px;"><i class="fas fa-hourglass-start"></i> Not Marked Yet</span>
+        {% endif %}
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+        Daily attendance register is maintained by Admin. Showing only technician attendance logs.
+      </div>
+    </div>
+  </div>
+  <a href="{{ url_for('payroll.attendance_page') }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+    <i class="fas fa-table-list"></i> View Technician Attendance
+  </a>
+</div>
+
+<!-- Stage Pipeline Counter -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px;">
+  <a href="{{ url_for('repairs.repair_list', status='Received') }}" class="kpi-card" style="padding: 14px; text-decoration: none;">
+    <div>
+      <div class="kpi-title">1. Received</div>
+      <div class="kpi-value" style="font-size: 20px;">{{ counts.Received }}</div>
+    </div>
+    <div class="kpi-icon icon-stock" style="width: 38px; height: 38px; font-size: 16px;"><i class="fas fa-inbox"></i></div>
+  </a>
+
+  <a href="{{ url_for('repairs.repair_list', status='Diagnosing') }}" class="kpi-card" style="padding: 14px; text-decoration: none;">
+    <div>
+      <div class="kpi-title">2. Diagnosing</div>
+      <div class="kpi-value" style="font-size: 20px;">{{ counts.Diagnosing }}</div>
+    </div>
+    <div class="kpi-icon icon-repair" style="width: 38px; height: 38px; font-size: 16px;"><i class="fas fa-magnifying-glass"></i></div>
+  </a>
+
+  <a href="{{ url_for('repairs.repair_list', status='Repairing') }}" class="kpi-card" style="padding: 14px; text-decoration: none;">
+    <div>
+      <div class="kpi-title">3. Repairing</div>
+      <div class="kpi-value" style="font-size: 20px;">{{ counts.Repairing }}</div>
+    </div>
+    <div class="kpi-icon icon-sales" style="width: 38px; height: 38px; font-size: 16px;"><i class="fas fa-wrench"></i></div>
+  </a>
+
+  <a href="{{ url_for('repairs.repair_list', status='Ready') }}" class="kpi-card" style="padding: 14px; text-decoration: none; border-color: rgba(16, 185, 129, 0.4);">
+    <div>
+      <div class="kpi-title" style="color: var(--success);">4. Ready</div>
+      <div class="kpi-value" style="font-size: 20px; color: var(--success);">{{ counts.Ready }}</div>
+    </div>
+    <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--success); width: 38px; height: 38px; font-size: 16px;"><i class="fas fa-circle-check"></i></div>
+  </a>
+
+  <a href="{{ url_for('repairs.repair_list', status='Delivered') }}" class="kpi-card" style="padding: 14px; text-decoration: none;">
+    <div>
+      <div class="kpi-title">5. Delivered</div>
+      <div class="kpi-value" style="font-size: 20px;">{{ counts.Delivered }}</div>
+    </div>
+    <div class="kpi-icon icon-stock" style="width: 38px; height: 38px; font-size: 16px;"><i class="fas fa-handshake"></i></div>
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <!-- Search -->
+      <form method="GET" action="{{ url_for('repairs.repair_list') }}" style="display: flex; gap: 8px;">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search ticket #, IMEI, customer..." class="form-control" style="width: 260px; padding: 7px 12px;">
+        {% if selected_status %}
+        <input type="hidden" name="status" value="{{ selected_status }}">
+        {% endif %}
+        <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-search"></i></button>
+      </form>
+
+      <a href="{{ url_for('repairs.repair_list', q=q) }}" class="btn btn-sm {% if not selected_status %}btn-primary{% else %}btn-secondary{% endif %}">
+        All Tickets
+      </a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="{{ url_for('payroll.attendance_page') }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fas fa-clipboard-user"></i> Technician Attendance
+      </a>
+      <button class="btn btn-primary btn-sm" onclick="openModal('createTicketModal')">
+        <i class="fas fa-plus"></i> New Repair Job
+      </button>
+    </div>
+  </div>
+
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Ticket #</th>
+            <th>Customer</th>
+            <th>Device & IMEI</th>
+            <th>Reported Problem</th>
+            <th>Technician</th>
+            <th>Cost & Balance</th>
+            <th>Lifecycle Stage</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tickets %}
+          <tr>
+            <td>
+              <strong style="font-size: 13.5px; color: var(--primary);">#{{ t.ticket_no }}</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ t.created_at.strftime('%d-%b %H:%M') }}</div>
+            </td>
+            <td>
+              <strong>{{ t.customer.name }}</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ t.customer.phone }}</div>
+            </td>
+            <td>
+              <strong>{{ t.brand }} {{ t.model }}</strong>
+              {% if t.imei %}
+              <div style="font-family: monospace; font-size: 10px; color: var(--text-muted);">IMEI: {{ t.imei }}</div>
+              {% endif %}
+            </td>
+            <td style="max-width: 220px;">
+              <span style="font-size: 13px;">{{ t.problem_description }}</span>
+              {% if t.technician_notes %}
+              <div style="font-size: 11px; color: var(--secondary); margin-top: 3px;">
+                <i class="fas fa-comment-dots"></i> {{ t.technician_notes }}
+              </div>
+              {% endif %}
+            </td>
+            <td>
+              {% if t.technician %}
+                <span class="badge badge-info">{{ t.technician.full_name }}</span>
+              {% else %}
+                <span style="color: var(--text-muted); font-size: 12px;">Unassigned</span>
+              {% endif %}
+            </td>
+            <td>
+              <div>Est: ₹{{ "{:,.2f}".format(t.estimated_cost) }}</div>
+              {% if t.final_cost > 0 %}
+              <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">Final: ₹{{ "{:,.2f}".format(t.final_cost) }}</div>
+              {% endif %}
+              
+              <!-- Advance & Remaining Balance Breakdown -->
+              {% set eff_cost = t.final_cost if t.final_cost > 0 else t.estimated_cost %}
+              {% set bal = eff_cost - (t.advance_paid or 0) %}
+              <div style="margin-top: 4px; font-size: 11px; display: flex; flex-direction: column; gap: 2px;">
+                <span style="color: #10b981; font-weight: 600;">
+                  <i class="fas fa-circle-check" style="font-size: 10px;"></i> Adv: ₹{{ "{:,.2f}".format(t.advance_paid or 0) }}
+                </span>
+                {% if bal > 0.01 %}
+                  <span style="color: #e11d48; font-weight: 700;">
+                    <i class="fas fa-clock" style="font-size: 10px;"></i> Due: ₹{{ "{:,.2f}".format(bal) }}
+                  </span>
+                {% else %}
+                  <span class="badge badge-success" style="font-size: 9px; padding: 2px 6px; width: fit-content; margin-top: 2px;">
+                    <i class="fas fa-shield-check"></i> FULLY PAID
+                  </span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <span class="badge 
+                {% if t.status == 'Received' %}badge-info
+                {% elif t.status == 'Diagnosing' %}badge-warning
+                {% elif t.status == 'Repairing' %}badge-primary
+                {% elif t.status == 'Ready' %}badge-success
+                {% else %}badge-secondary{% endif %}">
+                {{ t.status }}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                {% set eff_cost = t.final_cost if t.final_cost > 0 else t.estimated_cost %}
+                {% set bal = eff_cost - (t.advance_paid or 0) %}
+                {% if bal > 0.01 %}
+                <button type="button" class="btn btn-primary btn-sm" onclick="openCollectPayModal(this)" 
+                  data-id="{{ t.id }}"
+                  data-ticket="{{ t.ticket_no }}"
+                  data-brand="{{ t.brand }}"
+                  data-model="{{ t.model }}"
+                  data-customer="{{ t.customer.name if t.customer else 'Walk-in' }}"
+                  data-phone="{{ t.customer.phone if t.customer else '' }}"
+                  data-cost="{{ '{:.2f}'.format(eff_cost) }}"
+                  data-advance="{{ '{:.2f}'.format(t.advance_paid or 0) }}"
+                  data-due="{{ '{:.2f}'.format(bal) }}"
+                  title="Collect Remaining Balance" 
+                  style="background: linear-gradient(135deg, #10b981, #059669); border-color: #059669; font-weight: 700; padding: 5px 10px; font-size: 11px; gap: 4px; cursor: pointer;">
+                  <i class="fas fa-hand-holding-dollar"></i> Pay Balance
+                </button>
+                {% else %}
+                <a href="{{ url_for('repairs.repair_receipt', ticket_id=t.id) }}" class="btn btn-secondary btn-sm" title="View & Print Paid Receipt" target="_blank" style="padding: 5px 8px; font-size: 11px; gap: 3px;">
+                  <i class="fas fa-receipt"></i> Receipt
+                </a>
+                {% endif %}
+
+                <button class="btn btn-secondary btn-sm" onclick='openUpdateTicketModal({{ t.to_dict()|tojson }})' title="Update Status & Notes" style="padding: 5px 8px; font-size: 11px;">
+                  <i class="fas fa-arrows-rotate"></i>
+                </button>
+                <button class="btn btn-success btn-sm" onclick="sendRepairWhatsapp({{ t.id }})" title="WhatsApp Status to Customer" style="padding: 5px 8px; font-size: 11px;">
+                  <i class="fab fa-whatsapp"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">
+              No repair tickets found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create Repair Ticket -->
+<div class="modal-overlay" id="createTicketModal">
+  <div class="modal-box">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-wrench"></i> Register New Repair Job</div>
+      <button onclick="closeModal('createTicketModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('repairs.create_ticket') }}" style="padding: 24px;">
+      <!-- Customer -->
+      <div class="form-group">
+        <label class="form-label">Customer</label>
+        <select name="customer_id" class="form-select" id="repairCustomerSelect" onchange="toggleRepairCustomer(this.value)">
+          <option value="new">+ New Customer</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}">{{ c.name }} ({{ c.phone }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div id="repairNewCustomerBox" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <input type="text" name="customer_name" placeholder="Customer Name" class="form-control">
+        <input type="text" name="customer_phone" placeholder="Phone Number *" class="form-control">
+      </div>
+
+      <!-- Device Info -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Brand</label>
+          <input type="text" name="brand" placeholder="e.g. Apple, OnePlus, Samsung" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Model</label>
+          <input type="text" name="model" placeholder="e.g. iPhone 13, Nord CE 3" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">IMEI / Serial (Optional)</label>
+        <input type="text" name="imei" placeholder="15-digit IMEI" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Problem / Fault Description</label>
+        <textarea name="problem_description" rows="2" class="form-control" placeholder="e.g. Broken display glass, battery drains in 2 hours, mic not working" required></textarea>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Assign Technician</label>
+          <select name="technician_id" class="form-select">
+            <option value="">-- Unassigned --</option>
+            {% for tech in technicians %}
+            <option value="{{ tech.id }}">{{ tech.full_name }} ({{ tech.role }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estimated Cost (₹)</label>
+          <input type="number" step="0.01" name="estimated_cost" value="1500" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Advance Paid (₹)</label>
+          <input type="number" step="0.01" name="advance_paid" value="0" class="form-control">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Repair Warranty (Days)</label>
+        <input type="number" name="warranty_days" value="30" class="form-control">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('createTicketModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Generate Job Ticket</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Update Repair Status -->
+<div class="modal-overlay" id="updateTicketModal">
+  <div class="modal-box" style="max-width: 520px;">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-gear"></i> Update Repair Progress</div>
+      <button onclick="closeModal('updateTicketModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form id="updateTicketForm" method="POST" style="padding: 24px;">
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        Updating <strong id="updateTicketLabel" style="color: var(--text-main);"></strong>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Status Progression</label>
+        <select id="updateTicketStatus" name="status" class="form-select" style="font-weight: 700;">
+          <option value="Received">📥 Received</option>
+          <option value="Diagnosing">🔍 Diagnosing</option>
+          <option value="Repairing">🛠️ Repairing</option>
+          <option value="Ready">✅ Ready for Delivery</option>
+          <option value="Delivered">🤝 Delivered to Customer</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Final Cost (₹)</label>
+        <input type="number" step="0.01" id="updateTicketCost" name="final_cost" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Spare Parts Consumed</label>
+        <input type="text" id="updateTicketParts" name="parts_used" placeholder="e.g. Original OLED Display, 4500mAh Battery" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Technician Diagnostic Notes</label>
+        <textarea id="updateTicketNotes" name="technician_notes" rows="2" class="form-control" placeholder="Internal observations or work completed"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('updateTicketModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Status</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Collect Repair Balance Payment -->
+<div class="modal-overlay" id="collectPayModal">
+  <div class="modal-box" style="max-width: 500px;">
+    <div class="card-header" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(2, 132, 199, 0.08)); border-bottom: 1px solid var(--border-color);">
+      <div class="card-title" style="color: #059669; font-size: 16px;">
+        <i class="fas fa-hand-holding-dollar"></i> Collect Repair Balance Payment
+      </div>
+      <button onclick="closeModal('collectPayModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <!-- Ticket Summary Card Inside Modal -->
+    <div style="padding: 16px 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <span style="font-size: 12px; font-weight: 700; color: var(--primary);" id="payModalTicketNo">#REP-XXXX</span>
+        <span style="font-size: 11px; color: var(--text-muted);" id="payModalCustomer">Customer Name</span>
+      </div>
+      <div style="font-size: 13px; font-weight: 800; color: var(--text-main);" id="payModalDevice">Device Model</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color); text-align: center;">
+        <div>
+          <span style="font-size: 9.5px; color: var(--text-muted); display: block;">TOTAL COST</span>
+          <strong style="font-size: 13px; color: var(--text-main);">₹<span id="payModalTotal">0.00</span></strong>
+        </div>
+        <div>
+          <span style="font-size: 9.5px; color: var(--text-muted); display: block;">ADVANCE PAID</span>
+          <strong style="font-size: 13px; color: #10b981;">₹<span id="payModalAdvance">0.00</span></strong>
+        </div>
+        <div>
+          <span style="font-size: 9.5px; color: #e11d48; font-weight: 700; display: block;">BALANCE DUE</span>
+          <strong style="font-size: 14px; color: #e11d48;">₹<span id="payModalDue">0.00</span></strong>
+        </div>
+      </div>
+    </div>
+
+    <form id="collectPayForm" method="POST" style="padding: 20px 24px;">
+      <!-- Amount to Pay -->
+      <div class="form-group">
+        <label class="form-label" style="font-weight: 700;">Amount to Collect (₹) *</label>
+        <div style="position: relative;">
+          <input type="number" step="0.01" min="0.01" id="payModalAmount" name="payment_amount" class="form-control" style="font-size: 16px; font-weight: 800; padding: 8px 12px 8px 30px; color: #059669;" required>
+          <span style="position: absolute; left: 12px; top: 10px; font-size: 15px; font-weight: 800; color: #059669;">₹</span>
+        </div>
+      </div>
+
+      <!-- Payment Mode -->
+      <div class="form-group">
+        <label class="form-label" style="font-weight: 700;">Payment Mode *</label>
+        <select name="payment_mode" class="form-select" style="font-weight: 600;" required>
+          <option value="Cash">💵 Cash Collection</option>
+          <option value="UPI" selected>⚡ UPI (GPay / PhonePe / Paytm / QR)</option>
+          <option value="Card">💳 Credit / Debit Card Terminal</option>
+        </select>
+      </div>
+
+      <!-- Lifecycle Status Update -->
+      <div class="form-group">
+        <label class="form-label" style="font-weight: 700;">Delivery / Ticket Status</label>
+        <select name="update_status" class="form-select">
+          <option value="Delivered" selected>🤝 Mark as Delivered (Device handed over to customer)</option>
+          <option value="Ready">✅ Mark as Ready for Pickup</option>
+          <option value="keep">Keep Current Status</option>
+        </select>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label class="form-label">Payment Receipt Notes (Optional)</label>
+        <input type="text" name="payment_notes" placeholder="e.g. Final settlement collected at counter" class="form-control">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('collectPayModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); border-color: #059669; font-weight: 800; padding: 8px 18px;">
+          <i class="fas fa-check-circle"></i> Confirm & Collect Payment
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function toggleRepairCustomer(val) {
+    const box = document.getElementById('repairNewCustomerBox');
+    if (val === 'new') {
+      box.style.display = 'grid';
+    } else {
+      box.style.display = 'none';
+    }
+  }
+
+  function openUpdateTicketModal(t) {
+    const form = document.getElementById('updateTicketForm');
+    form.action = `/repairs/${t.id}/update-status`;
+    document.getElementById('updateTicketLabel').textContent = `#${t.ticket_no} - ${t.brand} ${t.model}`;
+    document.getElementById('updateTicketStatus').value = t.status;
+    document.getElementById('updateTicketCost').value = t.final_cost || t.estimated_cost;
+    document.getElementById('updateTicketParts').value = t.parts_used || '';
+    document.getElementById('updateTicketNotes').value = t.technician_notes || '';
+    openModal('updateTicketModal');
+  }
+
+  function openCollectPayModal(btnOrObj) {
+    let id, ticket, brand, model, customer, phone, cost, advance, due;
+
+    if (btnOrObj && typeof btnOrObj.getAttribute === 'function') {
+      // Called with HTML button element (data attributes)
+      id = btnOrObj.getAttribute('data-id');
+      ticket = btnOrObj.getAttribute('data-ticket');
+      brand = btnOrObj.getAttribute('data-brand') || '';
+      model = btnOrObj.getAttribute('data-model') || '';
+      customer = btnOrObj.getAttribute('data-customer') || 'Customer';
+      phone = btnOrObj.getAttribute('data-phone') || '';
+      cost = parseFloat(btnOrObj.getAttribute('data-cost')) || 0;
+      advance = parseFloat(btnOrObj.getAttribute('data-advance')) || 0;
+      due = parseFloat(btnOrObj.getAttribute('data-due')) || 0;
+    } else if (btnOrObj) {
+      // Called with JS object
+      const t = btnOrObj;
+      id = t.id;
+      ticket = t.ticket_no;
+      brand = t.brand || '';
+      model = t.model || '';
+      customer = t.customer_name || 'Customer';
+      phone = t.customer_phone || '';
+      cost = (t.final_cost && t.final_cost > 0) ? t.final_cost : (t.estimated_cost || 0);
+      advance = t.advance_paid || 0;
+      due = Math.max(0, cost - advance);
+    } else {
+      return;
+    }
+
+    const form = document.getElementById('collectPayForm');
+    if (form) form.action = `/repairs/${id}/collect-payment`;
+    
+    const tickEl = document.getElementById('payModalTicketNo');
+    if (tickEl) tickEl.textContent = `#${ticket}`;
+
+    const devEl = document.getElementById('payModalDevice');
+    if (devEl) devEl.textContent = `${brand} ${model}`;
+
+    const custEl = document.getElementById('payModalCustomer');
+    if (custEl) custEl.textContent = `${customer} (${phone || 'Walk-in'})`;
+
+    const totEl = document.getElementById('payModalTotal');
+    if (totEl) totEl.textContent = cost.toLocaleString('en-IN', {minimumFractionDigits: 2});
+
+    const advEl = document.getElementById('payModalAdvance');
+    if (advEl) advEl.textContent = advance.toLocaleString('en-IN', {minimumFractionDigits: 2});
+
+    const dueEl = document.getElementById('payModalDue');
+    if (dueEl) dueEl.textContent = due.toLocaleString('en-IN', {minimumFractionDigits: 2});
+
+    const amtInput = document.getElementById('payModalAmount');
+    if (amtInput) {
+      amtInput.value = due.toFixed(2);
+      amtInput.max = due.toFixed(2);
+    }
+
+    openModal('collectPayModal');
+  }
+
+  function sendRepairWhatsapp(ticketId) {
+    fetch(`/repairs/${ticketId}/whatsapp-url`)
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.url) {
+          window.open(res.url, '_blank');
+        } else {
+          alert("Error: " + (res.message || "Could not generate WhatsApp URL"));
+        }
+      });
+  }
+</script>
+{% endblock %}

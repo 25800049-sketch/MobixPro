@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}Repair Receipt #{{ ticket.ticket_no }} — MOBIXPRO{% endblock %}
+{% block header_title %}Repair Service Receipt #{{ ticket.ticket_no }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  @media print {
+    body {
+      background: white !important;
+      color: black !important;
+    }
+    .app-sidebar, .app-navbar, .app-footer, .floating-phone-dock-btn, .floating-phone-window, .no-print {
+      display: none !important;
+    }
+    .app-main {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .page-body {
+      padding: 0 !important;
+    }
+    .receipt-card {
+      box-shadow: none !important;
+      border: 1px solid #cbd5e1 !important;
+      padding: 24px !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+  }
+
+  .receipt-card {
+    max-width: 720px;
+    margin: 0 auto 30px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 36px 40px;
+    box-shadow: var(--shadow-md);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Action Bar (hidden when printing) -->
+<div class="no-print" style="max-width: 720px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+  <a href="{{ url_for('repairs.repair_list') }}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-arrow-left"></i> Back to Repair Pipeline
+  </a>
+  <div style="display: flex; gap: 10px;">
+    <button onclick="window.print()" class="btn btn-primary btn-sm" style="font-weight: 700;">
+      <i class="fas fa-print"></i> Print Receipt / PDF
+    </button>
+    <button onclick="sendRepairWhatsapp({{ ticket.id }})" class="btn btn-success btn-sm" style="font-weight: 700;">
+      <i class="fab fa-whatsapp"></i> WhatsApp Receipt
+    </button>
+  </div>
+</div>
+
+<!-- Main Printable Receipt Card -->
+<div class="receipt-card">
+  <!-- Header: Store Branding & Receipt Title -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+        <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #0284c7, #2563eb); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px;">
+          <i class="fas fa-screwdriver-wrench"></i>
+        </div>
+        <span style="font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: var(--text-main);">MOBIXPRO SERVICE CARE</span>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+        Advanced Mobile Service Center & Diagnostics Lab<br>
+        104, Tech Park Boulevard, Bandra West, Mumbai • Support: +91 98765 43210
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <span class="badge {% if balance_due <= 0.01 %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 12px; padding: 6px 14px; font-weight: 800; text-transform: uppercase;">
+        {% if balance_due <= 0.01 %}PAID RECEIPT{% else %}PARTIALLY PAID{% endif %}
+      </span>
+      <div style="font-size: 16px; font-weight: 800; font-family: monospace; color: var(--primary); margin-top: 8px;">
+        #{{ ticket.ticket_no }}
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted);">
+        Date: {{ ticket.created_at.strftime('%d %b %Y, %I:%M %p') }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer & Device Overview (Two-column grid) -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; padding: 16px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+    <div>
+      <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Customer Details</div>
+      <div style="font-size: 14px; font-weight: 700; color: var(--text-main);">{{ ticket.customer.name if ticket.customer else 'Walk-in Customer' }}</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+        <i class="fas fa-phone" style="font-size: 10px;"></i> {{ ticket.customer.phone if ticket.customer else 'N/A' }}
+      </div>
+      {% if ticket.customer and ticket.customer.email %}
+      <div style="font-size: 11px; color: var(--text-muted);">{{ ticket.customer.email }}</div>
+      {% endif %}
+    </div>
+    <div>
+      <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Device & Hardware Info</div>
+      <div style="font-size: 14px; font-weight: 700; color: var(--text-main);">{{ ticket.brand }} {{ ticket.model }}</div>
+      {% if ticket.imei %}
+      <div style="font-size: 11px; font-family: monospace; color: var(--text-muted); margin-top: 2px;">IMEI: {{ ticket.imei }}</div>
+      {% endif %}
+      <div style="font-size: 11px; color: var(--text-muted);">
+        Assigned Tech: <strong style="color: var(--text-main);">{{ ticket.technician.full_name if ticket.technician else 'Senior Technician' }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diagnostic & Service Details -->
+  <div style="margin-bottom: 24px;">
+    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Service & Repair Summary</div>
+    <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+      <thead>
+        <tr style="border-bottom: 1.5px solid var(--border-color); text-align: left; color: var(--text-muted); font-size: 11px; text-transform: uppercase;">
+          <th style="padding: 8px 4px;">Description / Fault</th>
+          <th style="padding: 8px 4px;">Spare Parts & Notes</th>
+          <th style="padding: 8px 4px; text-align: right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid var(--border-color);">
+          <td style="padding: 12px 4px; vertical-align: top;">
+            <strong style="color: var(--text-main);">{{ ticket.problem_description }}</strong>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">Lifecycle Status: <span class="badge badge-info" style="font-size: 9px;">{{ ticket.status }}</span></div>
+          </td>
+          <td style="padding: 12px 4px; vertical-align: top; color: var(--text-muted); font-size: 12px;">
+            {{ ticket.parts_used or 'Standard diagnostics & repair service' }}
+            {% if ticket.technician_notes %}
+            <div style="font-size: 11px; color: var(--primary); margin-top: 4px;"><i class="fas fa-comment-dots"></i> {{ ticket.technician_notes }}</div>
+            {% endif %}
+          </td>
+          <td style="padding: 12px 4px; text-align: right; vertical-align: top; font-weight: 700; font-size: 14px; color: var(--text-main);">
+            ₹{{ "{:,.2f}".format(effective_cost) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Financial Calculation & Payment Summary -->
+  <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+    <div style="width: 320px; background: var(--bg-surface); padding: 16px 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12.5px;">
+        <span style="color: var(--text-muted);">Total Service Charges:</span>
+        <strong style="color: var(--text-main);">₹{{ "{:,.2f}".format(effective_cost) }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12.5px; color: #10b981;">
+        <span><i class="fas fa-circle-check" style="font-size: 10px;"></i> Amount Paid:</span>
+        <strong>₹{{ "{:,.2f}".format(ticket.advance_paid or 0) }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 11.5px; color: var(--text-muted);">
+        <span>Payment Mode:</span>
+        <strong>{{ ticket.payment_mode or 'Cash' }}</strong>
+      </div>
+      <div style="border-top: 1.5px dashed var(--border-color); padding-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 800; font-size: 13px;">Remaining Balance Due:</span>
+        <strong style="font-size: 16px; font-weight: 900; color: {% if balance_due <= 0.01 %}#10b981{% else %}#e11d48{% endif %};">
+          ₹{{ "{:,.2f}".format(balance_due) }}
+        </strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Warranty & Terms Notice -->
+  <div style="background: rgba(2, 132, 199, 0.06); border: 1px solid rgba(2, 132, 199, 0.2); border-radius: 10px; padding: 12px 16px; font-size: 11px; color: var(--text-muted); display: flex; gap: 12px; align-items: center; margin-bottom: 24px;">
+    <i class="fas fa-shield-halved" style="font-size: 24px; color: var(--primary);"></i>
+    <div>
+      <strong style="color: var(--text-main); font-size: 12px;">{{ ticket.warranty_days }}-Day Official Service Center Warranty</strong><br>
+      Warranty covers parts replaced as listed on this slip. Physical damage, liquid contact, or third-party tampering voids warranty. Please present this slip for warranty claims.
+    </div>
+  </div>
+
+  <!-- Signatures Footer -->
+  <div style="display: flex; justify-content: space-between; padding-top: 30px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); text-align: center;">
+    <div>
+      <div style="width: 140px; border-bottom: 1px solid var(--border-color); margin-bottom: 6px;"></div>
+      Customer Signature
+    </div>
+    <div>
+      <div style="width: 140px; border-bottom: 1px solid var(--border-color); margin-bottom: 6px;"></div>
+      Authorized Technician / Cashier
+    </div>
+  </div>
+</div>
+
+<script>
+  function sendRepairWhatsapp(ticketId) {
+    fetch(`/repairs/${ticketId}/whatsapp-url`)
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.url) {
+          window.open(res.url, '_blank');
+        } else {
+          alert("Error: " + (res.message || "Could not generate WhatsApp URL"));
+        }
+      });
+  }
+</script>
+{% endblock %}

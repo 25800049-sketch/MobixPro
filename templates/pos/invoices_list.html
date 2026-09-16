@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Invoices & Billing History — MOBIX{% endblock %}
+{% block header_title %}Tax Invoices & Transaction History{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <form method="GET" action="{{ url_for('pos.invoices_list') }}" style="display: flex; gap: 8px;">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search Invoice #, customer, phone..." class="form-control" style="width: 280px; padding: 7px 12px;">
+        <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-search"></i></button>
+      </form>
+    </div>
+
+    <a href="{{ url_for('pos.billing') }}" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus"></i> New Sale
+    </a>
+  </div>
+
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Date & Time</th>
+            <th>Customer</th>
+            <th>Billed By</th>
+            <th>Payment Mode</th>
+            <th>Status</th>
+            <th>Grand Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr>
+            <td>
+              <strong style="font-size: 13.5px; color: var(--primary);">#{{ inv.invoice_number }}</strong>
+            </td>
+            <td>{{ inv.created_at.strftime('%d-%b-%Y %H:%M') }}</td>
+            <td>
+              <strong>{{ inv.customer.name }}</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ inv.customer.phone }}</div>
+            </td>
+            <td>{{ inv.cashier.full_name }}</td>
+            <td><span class="badge badge-info">{{ inv.payment_mode }}</span></td>
+            <td>
+              <span class="badge {% if inv.payment_status == 'Paid' %}badge-success{% else %}badge-warning{% endif %}">
+                {{ inv.payment_status }}
+              </span>
+            </td>
+            <td style="font-weight: 800; font-size: 14px; color: var(--text-main);">
+              ₹{{ "{:,.2f}".format(inv.final_total) }}
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <a href="{{ url_for('pos.view_invoice', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm" title="View & Print">
+                  <i class="fas fa-eye"></i> View
+                </a>
+                <a href="{{ url_for('pos.download_pdf', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm" title="Download Official PDF">
+                  <i class="fas fa-file-pdf" style="color: #ef4444;"></i> PDF
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">
+              No invoices found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Customers Directory — MOBIX{% endblock %}
+{% block header_title %}Customer Relationship & Accounts{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <form method="GET" action="{{ url_for('customers.customer_list') }}" style="display: flex; gap: 8px;">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search customer name, phone, email..." class="form-control" style="width: 280px; padding: 7px 12px;">
+        <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-search"></i></button>
+      </form>
+    </div>
+
+    <button class="btn btn-primary btn-sm" onclick="openModal('addCustomerModal')">
+      <i class="fas fa-user-plus"></i> Register Customer
+    </button>
+  </div>
+
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Customer Name</th>
+            <th>Phone Number</th>
+            <th>Email Address</th>
+            <th>Address</th>
+            <th>Outstanding Due</th>
+            <th>Registered Date</th>
+            <th>360 Profile</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in customers %}
+          <tr>
+            <td>
+              <strong style="font-size: 14px; color: var(--text-main);">{{ c.name }}</strong>
+            </td>
+            <td>
+              <a href="tel:{{ c.phone }}" style="font-weight: 600;">{{ c.phone }}</a>
+            </td>
+            <td>{{ c.email or '-' }}</td>
+            <td style="max-width: 200px;">{{ c.address or 'Counter Walk-in' }}</td>
+            <td>
+              {% if c.outstanding_balance > 0 %}
+                <span class="badge badge-danger">₹{{ "{:,.2f}".format(c.outstanding_balance) }}</span>
+              {% else %}
+                <span class="badge badge-success">₹0.00 (Clear)</span>
+              {% endif %}
+            </td>
+            <td>{{ c.created_at.strftime('%d-%b-%Y') }}</td>
+            <td>
+              <a href="{{ url_for('customers.customer_detail', customer_id=c.id) }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-folder-open"></i> Profile
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">
+              No customers found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Customer -->
+<div class="modal-overlay" id="addCustomerModal">
+  <div class="modal-box" style="max-width: 480px;">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-user-plus"></i> Register Customer Profile</div>
+      <button onclick="closeModal('addCustomerModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('customers.add_customer') }}" style="padding: 24px;">
+      <div class="form-group">
+        <label class="form-label">Customer Full Name</label>
+        <input type="text" name="name" placeholder="e.g. Rajesh Kumar" class="form-control" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="text" name="phone" placeholder="10-digit mobile" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email (Optional)</label>
+          <input type="email" name="email" placeholder="for receipts" class="form-control">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Address / Landmark</label>
+        <textarea name="address" rows="2" class="form-control" placeholder="Street, city, postal code"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addCustomerModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Register Customer</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

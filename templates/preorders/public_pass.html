@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if booking %}Digital Booking Pass #{{ booking.booking_no }}{% else %}Track Pre-Order{% endif %} — {{ config.SHOP_NAME }}</title>
+
+  <!-- Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <style>
+    body {
+      background: #090d16;
+      color: #e2e8f0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pass-container {
+      max-width: 680px;
+      margin: 30px auto;
+      padding: 0 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* VIP Boarding Pass Card */
+    .vip-pass-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1.5px solid rgba(99, 102, 241, 0.4);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(20px);
+    }
+
+    .pass-header {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(2, 132, 199, 0.25));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pass-body {
+      padding: 28px 24px;
+    }
+
+    .info-tile {
+      background: rgba(2, 6, 23, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="pass-container">
+    <!-- Back / Header Navigation -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <a href="{{ url_for('prebook.public_showcase') }}" style="color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+        <i class="fas fa-arrow-left"></i> Flagship Showcase
+      </a>
+      <span style="font-size: 13px; font-weight: 800; color: #ffffff;">{{ config.SHOP_NAME }}</span>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div style="padding: 12px 18px; border-radius: 12px; margin-bottom: 20px; font-size: 13.5px; font-weight: 600; text-align: center; {% if category == 'error' %}background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4);{% else %}background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4);{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% if booking %}
+    <!-- ================= LIVE DIGITAL BOOKING PASS ================= -->
+    <div class="vip-pass-card">
+      <!-- Pass Header -->
+      <div class="pass-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #0284c7, #6366f1); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px;">
+            <i class="fas fa-mobile-screen-button"></i>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #93c5fd; letter-spacing: 0.5px;">Flagship Launch Priority Pass</div>
+            <div style="font-size: 18px; font-weight: 800; color: #ffffff;">{{ booking.booking_no }}</div>
+          </div>
+        </div>
+
+        <div style="text-align: right;">
+          {% if booking.status == 'Allocated' %}
+          <span class="badge badge-success" style="padding: 6px 12px; font-size: 11px; font-weight: 800; box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);">
+            <i class="fas fa-check-circle"></i> Ready for Pickup
+          </span>
+          {% elif booking.status == 'Booked' %}
+          <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 6px 12px; font-size: 11px; font-weight: 800;">
+            <i class="fas fa-hourglass-start"></i> In Priority Queue
+          </span>
+          {% elif booking.status == 'Fulfilled' %}
+          <span class="badge badge-info" style="padding: 6px 12px; font-size: 11px;">
+            <i class="fas fa-handshake"></i> Collected & Billed
+          </span>
+          {% else %}
+          <span class="badge badge-danger">Cancelled</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Live Status Hero Banner -->
+      <div style="padding: 20px 24px; {% if booking.status == 'Allocated' %}background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.25)); border-bottom: 1px solid rgba(16, 185, 129, 0.3);{% else %}background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.12)); border-bottom: 1px solid rgba(99, 102, 241, 0.3);{% endif %}">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+          <div>
+            <div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #a5b4fc; letter-spacing: 0.5px;">Your Queue Priority Position</div>
+            <div style="font-size: 32px; font-weight: 800; color: #ffffff; margin: 4px 0;">
+              QUEUE RANK #{{ "{:02d}".format(booking.queue_priority) }}
+            </div>
+            <div style="font-size: 13px; color: #cbd5e1;">
+              {% if booking.status == 'Allocated' %}
+              🎉 Handset is in-store! Please visit showroom to claim.
+              {% else %}
+              ⚡ FIFO allocation active. Handset guaranteed on arrival.
+              {% endif %}
+            </div>
+          </div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Advance Secured</div>
+            <div style="font-size: 24px; font-weight: 800; color: #10b981;">₹{{ "{:,.0f}".format(booking.token_advance) }}</div>
+            <span class="badge badge-success" style="font-size: 10px; margin-top: 4px;">{{ booking.payment_status }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pass Body -->
+      <div class="pass-body">
+        <!-- Details Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+          <div class="info-tile">
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Reserved Handset</div>
+            <div style="font-size: 15px; font-weight: 800; color: #ffffff; margin-top: 4px;">{{ booking.brand }} {{ booking.model }}</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">{{ booking.variant }}</div>
+          </div>
+
+          <div class="info-tile">
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Customer Pass Holder</div>
+            <div style="font-size: 15px; font-weight: 800; color: #ffffff; margin-top: 4px;">{{ booking.customer.name }}</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">{{ booking.customer.phone }}</div>
+          </div>
+        </div>
+
+        <!-- Financial Summary Box -->
+        <div class="info-tile" style="margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px;">
+            <span style="color: #94a3b8;">Est. Device Launch Price:</span>
+            <span style="color: #ffffff; font-weight: 700;">₹{{ "{:,.2f}".format(booking.expected_price) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px;">
+            <span style="color: #10b981;">Token Advance Credited:</span>
+            <span style="color: #10b981; font-weight: 800;">- ₹{{ "{:,.2f}".format(booking.token_advance) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(255, 255, 255, 0.12); padding-top: 10px; font-size: 15px;">
+            <strong style="color: #ffffff;">Remaining Balance Due at Pickup:</strong>
+            <strong style="color: #6366f1; font-size: 18px;">₹{{ "{:,.2f}".format(booking.remaining_balance) }}</strong>
+          </div>
+        </div>
+
+        <!-- Dynamic QR Code & Pickup Instructions -->
+        <div style="display: flex; align-items: center; gap: 20px; background: rgba(2, 6, 23, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 18px; margin-bottom: 20px; flex-wrap: wrap;">
+          <div style="background: #ffffff; padding: 8px; border-radius: 12px; display: inline-block;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={{ booking.booking_no }}" alt="Booking QR" style="display: block; width: 120px; height: 120px;">
+          </div>
+          <div style="flex: 1; min-width: 200px;">
+            <strong style="font-size: 14px; color: #ffffff; display: block; margin-bottom: 4px;">
+              <i class="fas fa-qrcode" style="color: #6366f1;"></i> Show this QR at Pickup
+            </strong>
+            <p style="font-size: 12px; color: #94a3b8; line-height: 1.5; margin: 0 0 10px;">
+              Present this pass at the counter upon device collection. Your ₹{{ "{:,.0f}".format(booking.token_advance) }} advance will be deducted automatically from your bill.
+            </p>
+            <div style="font-size: 11.5px; color: #cbd5e1;">
+              📍 <strong>Store:</strong> {{ config.SHOP_ADDRESS }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Options: WhatsApp & Cancel Booking -->
+        <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+          <a href="{{ whatsapp_url }}" target="_blank" class="btn btn-success" style="flex: 1; min-width: 200px; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; box-shadow: 0 4px 18px rgba(16, 185, 129, 0.3);">
+            <i class="fab fa-whatsapp" style="font-size: 18px;"></i> Save Booking Pass to WhatsApp
+          </a>
+
+          {% if booking.status in ['Booked', 'Allocated'] %}
+          <button type="button" onclick="document.getElementById('publicCancelModal').style.display='flex';" class="btn" style="padding: 14px 20px; border-radius: 12px; font-weight: 700; font-size: 13.5px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i class="fas fa-ban"></i> Cancel Booking
+          </button>
+          {% endif %}
+        </div>
+
+        {% if booking.status == 'Cancelled' %}
+        <div style="margin-top: 18px; padding: 14px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; text-align: center; color: #fca5a5; font-size: 13px;">
+          <i class="fas fa-circle-xmark"></i> This pre-order has been cancelled. If you paid an advance of ₹{{ "{:,.0f}".format(booking.token_advance) }}, please visit the store or contact us for your refund.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% else %}
+    <!-- ================= TRACK PRE-ORDER LOOKUP FORM ================= -->
+    <div class="vip-pass-card" style="padding: 36px 30px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(99, 102, 241, 0.2); color: #818cf8; display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 12px;">
+          <i class="fas fa-magnifying-glass"></i>
+        </div>
+        <h2 style="font-size: 22px; font-weight: 800; color: #ffffff; margin: 0 0 6px;">Track Your Pre-Order Status</h2>
+        <p style="font-size: 13px; color: #94a3b8; margin: 0;">Enter your Booking ID (e.g. PB-2026-0001) or WhatsApp Phone Number.</p>
+      </div>
+
+      <form method="GET" action="{{ url_for('prebook.track_lookup') }}">
+        <div style="margin-bottom: 18px;">
+          <input type="text" name="q" placeholder="Booking ID (PB-...) or 10-digit Phone" required class="custom-input" style="padding: 14px; font-size: 15px; text-align: center;">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 14px; font-weight: 800; border-radius: 12px;">
+          <i class="fas fa-search"></i> Check My Queue Status
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #64748b;">
+      Need help? Call Store Helpline at <strong>{{ config.SHOP_PHONE }}</strong>
+    </div>
+  </div>
+
+  <!-- Customer Online Cancellation Modal -->
+  {% if booking and booking.status in ['Booked', 'Allocated'] %}
+  <div id="publicCancelModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.78); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #0f172a; border: 1.5px solid rgba(239, 68, 68, 0.4); border-radius: 20px; max-width: 440px; width: 100%; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 18px; color: #f87171; font-weight: 800;"><i class="fas fa-ban"></i> Cancel Pre-Order</h3>
+        <button onclick="document.getElementById('publicCancelModal').style.display='none';" style="background: none; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      <p style="font-size: 13.5px; color: #cbd5e1; line-height: 1.5; margin: 0 0 14px;">
+        Are you sure you want to cancel pre-order <strong>#{{ booking.booking_no }}</strong> for <strong>{{ booking.brand }} {{ booking.model }}</strong>?
+      </p>
+      <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+        <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Advance Refund Notice</div>
+        <div style="font-size: 13px; color: #fca5a5; margin-top: 4px; line-height: 1.4;">
+          Your advance of <strong>₹{{ "{:,.0f}".format(booking.token_advance) }}</strong> is refundable. You can collect it by visiting our store or calling <strong>{{ config.SHOP_PHONE }}</strong>.
+        </div>
+      </div>
+      <form method="POST" action="{{ url_for('prebook.public_cancel', booking_no=booking.booking_no) }}">
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; font-weight: 700;">Cancellation Reason:</label>
+          <input type="text" name="reason" placeholder="e.g. Purchased another device / emergency" style="width: 100%; box-sizing: border-box; background: #020617; border: 1px solid #334155; border-radius: 8px; color: #fff; padding: 10px 12px; font-size: 13px;">
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" onclick="document.getElementById('publicCancelModal').style.display='none';" style="padding: 10px 16px; border-radius: 8px; background: #334155; color: #fff; border: none; font-weight: 700; cursor: pointer; font-size: 13px;">Keep Pre-Order</button>
+          <button type="submit" style="padding: 10px 18px; border-radius: 8px; background: #dc2626; color: #fff; border: none; font-weight: 800; cursor: pointer; font-size: 13px;">Confirm Cancellation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</body>
+</html>

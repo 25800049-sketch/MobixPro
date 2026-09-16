@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}EMI Management & Auto-Fines — MOBIX{% endblock %}
+{% block header_title %}Smart Store EMI Contracts & Overdue Penalties{% endblock %}
+
+{% block content %}
+<!-- Metrics Bar -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+  <div class="kpi-card" style="padding: 16px;">
+    <div>
+      <div class="kpi-title">Active EMI Contracts</div>
+      <div class="kpi-value">{{ active_count }}</div>
+    </div>
+    <div class="kpi-icon icon-stock"><i class="fas fa-handshake"></i></div>
+  </div>
+
+  <div class="kpi-card" style="padding: 16px; border-color: rgba(239, 68, 68, 0.4);">
+    <div>
+      <div class="kpi-title" style="color: var(--danger);">Overdue Accounts</div>
+      <div class="kpi-value" style="color: var(--danger);">{{ overdue_count }}</div>
+      <div class="kpi-sub" style="color: var(--danger); font-weight: 600;">₹200 fine auto-applied</div>
+    </div>
+    <div class="kpi-icon icon-dues"><i class="fas fa-triangle-exclamation"></i></div>
+  </div>
+
+  <div class="kpi-card" style="padding: 16px;">
+    <div>
+      <div class="kpi-title">Fully Paid / Completed</div>
+      <div class="kpi-value" style="color: var(--success);">{{ completed_count }}</div>
+    </div>
+    <div class="kpi-icon icon-sales"><i class="fas fa-badge-check"></i></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <!-- Search -->
+      <form method="GET" action="{{ url_for('emi.emi_list') }}" style="display: flex; gap: 8px;">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search customer name or phone..." class="form-control" style="width: 240px; padding: 7px 12px;">
+        {% if selected_status %}
+        <input type="hidden" name="status" value="{{ selected_status }}">
+        {% endif %}
+        <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-search"></i></button>
+      </form>
+
+      <!-- Status Filter -->
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <a href="{{ url_for('emi.emi_list', q=q) }}" class="btn btn-sm {% if not selected_status %}btn-primary{% else %}btn-secondary{% endif %}">
+          All
+        </a>
+        <a href="{{ url_for('emi.emi_list', status='Active', q=q) }}" class="btn btn-sm {% if selected_status == 'Active' %}btn-primary{% else %}btn-secondary{% endif %}">
+          Active
+        </a>
+        <a href="{{ url_for('emi.emi_list', status='Overdue', q=q) }}" class="btn btn-sm {% if selected_status == 'Overdue' %}btn-danger{% else %}btn-secondary{% endif %}">
+          Overdue ({{ overdue_count }})
+        </a>
+        <a href="{{ url_for('emi.emi_list', status='Completed', q=q) }}" class="btn btn-sm {% if selected_status == 'Completed' %}btn-primary{% else %}btn-secondary{% endif %}">
+          Completed
+        </a>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <form method="POST" action="{{ url_for('emi.refresh_fines') }}">
+        <button type="submit" class="btn btn-secondary btn-sm" title="Re-scan and calculate late penalty fines for overdue dates">
+          <i class="fas fa-arrows-rotate"></i> Auto-Fines
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Credit Risk</th>
+            <th>Invoice #</th>
+            <th>Monthly EMI</th>
+            <th>Remaining</th>
+            <th>Contract Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for acc in accounts %}
+          <tr {% if acc.status == 'Overdue' %}style="background: rgba(239, 68, 68, 0.05);"{% endif %}>
+            <td>
+              <strong>{{ acc.customer.name }}</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ acc.customer.phone }}</div>
+            </td>
+            <td>
+              {% set cp = credit_profiles.get(acc.customer_id) %}
+              {% if cp %}
+                <span class="badge {{ cp.badge_class }}" title="Credit Score: {{ cp.score }}/900 | On-time rate: {{ cp.on_time_ratio }}%">
+                  {{ cp.tier }} ({{ cp.score }})
+                </span>
+              {% else %}
+                <span style="color: var(--text-muted); font-size: 11px;">N/A</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('pos.view_invoice', invoice_id=acc.invoice_id) }}" style="font-weight: 600;">
+                #{{ acc.invoice.invoice_number }}
+              </a>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ acc.target_device_name }}</div>
+            </td>
+            <td style="font-weight: 700; color: var(--primary);">₹{{ "{:,.2f}".format(acc.emi_amount) }} / mo</td>
+            <td style="font-weight: 700;">₹{{ "{:,.2f}".format(acc.principal_remaining) }}</td>
+            <td>
+              <span class="badge {% if acc.status == 'Completed' %}badge-success{% elif acc.status == 'Overdue' %}badge-danger{% else %}badge-warning{% endif %}">
+                {{ acc.status }}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <a href="{{ url_for('emi.emi_detail', account_id=acc.id) }}" class="btn btn-secondary btn-sm" title="View Schedule & Payments">
+                  <i class="fas fa-calendar-alt"></i> Schedule
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">
+              No EMI records found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

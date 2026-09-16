@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Store Settings — MOBIX ERP{% endblock %}
+{% block header_title %}System & Store Configuration{% endblock %}
+
+{% block content %}
+<div style="max-width: 860px; margin: 0 auto;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-sliders" style="color: var(--primary);"></i>
+        <span>Mobile Shop Profile & POS Settings</span>
+      </div>
+      <span class="badge badge-primary">Admin Control</span>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('settings.settings_page') }}">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label class="form-label">Shop / Store Name *</label>
+            <input type="text" name="store_name" class="form-control" value="{{ settings.store_name }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Brand Tagline</label>
+            <input type="text" name="tagline" class="form-control" value="{{ settings.tagline }}">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label class="form-label">Support Phone</label>
+            <input type="text" name="contact_phone" class="form-control" value="{{ settings.contact_phone }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Support Email</label>
+            <input type="email" name="contact_email" class="form-control" value="{{ settings.contact_email }}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Store Physical Address (Printed on Invoices)</label>
+          <textarea name="store_address" class="form-control" rows="2">{{ settings.store_address }}</textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label">GSTIN / Tax ID</label>
+            <input type="text" name="gstin" class="form-control" value="{{ settings.gstin }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default GST Rate (%)</label>
+            <input type="number" step="0.1" name="tax_rate" class="form-control" value="{{ settings.tax_rate }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">EMI Late Fine (₹)</label>
+            <input type="number" step="10" name="emi_late_fine" class="form-control" value="{{ settings.emi_late_fine }}">
+          </div>
+        </div>
+
+        <!-- Background Mobile Floating Theme Settings -->
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-mobile-screen" style="color: var(--primary);"></i>
+            <span>Background Mobile Floating Theme Configuration</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+              <label class="form-label">Default Floating Theme State</label>
+              <select name="floating_theme_default" class="form-select" id="floatingThemeSettingSelect" onchange="document.documentElement.setAttribute('data-floating-theme', this.value); localStorage.setItem('mobix_floating_theme', this.value);">
+                <option value="enabled" {% if settings.get('floating_theme_default', 'enabled') == 'enabled' %}selected{% endif %}>Active / 3D Floating Mobile Universe (Recommended)</option>
+                <option value="disabled" {% if settings.get('floating_theme_default') == 'disabled' %}selected{% endif %}>Disabled / Minimal Static Background</option>
+              </select>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Controls the background animation with 3D phones & tech satellites.</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Theme Visual Style</label>
+              <select name="floating_theme_style" class="form-select">
+                <option value="cyber-glass" {% if settings.get('floating_theme_style', 'cyber-glass') == 'cyber-glass' %}selected{% endif %}>Cyber Glass 3D (Holographic + Apple Titanium)</option>
+                <option value="neon-glow" {% if settings.get('floating_theme_style') == 'neon-glow' %}selected{% endif %}>Vibrant Neon Circuit & 5G Satellites</option>
+                <option value="soft-ambient" {% if settings.get('floating_theme_style') == 'soft-ambient' %}selected{% endif %}>Soft Ambient Aura</option>
+              </select>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Dynamic styling and color palette used by floating devices.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">
+            <i class="fas fa-floppy-disk"></i> Save System Settings
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- System Health & Environment Info -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-server" style="color: var(--secondary);"></i>
+        <span>System Diagnostics & Environment</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+        <div style="background: var(--bg-card); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Database</div>
+          <div style="font-size: 15px; font-weight: 700; color: var(--text-main); margin-top: 4px;">SQLite 3 (mobix.db)</div>
+          <div style="font-size: 11px; color: #10b981; margin-top: 2px;">Connected & Healthy</div>
+        </div>
+        <div style="background: var(--bg-card); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">UI Theme Engine</div>
+          <div style="font-size: 15px; font-weight: 700; color: var(--primary); margin-top: 4px;">3D Mobile Floating Theme</div>
+          <div style="font-size: 11px; color: #10b981; margin-top: 2px;">Hardware-Accelerated Parallax Active</div>
+        </div>
+        <div style="background: var(--bg-card); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">AI Engine</div>
+          <div style="font-size: 15px; font-weight: 700; color: #ec4899; margin-top: 4px;">Gemini Valuation Core</div>
+          <div style="font-size: 11px; color: #10b981; margin-top: 2px;">Active & Calibrated</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

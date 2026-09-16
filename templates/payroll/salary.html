@@ -1,0 +1,368 @@
+{% extends 'base.html' %}
+
+{% block title %}Salary & Payroll — MOBIX ERP{% endblock %}
+{% block header_title %}Staff Payroll & Attendance-Based Salary{% endblock %}
+
+{% block content %}
+<!-- Top Action Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 14px;">
+  <div>
+    <h2 style="font-size: 18px; color: var(--text-main); margin-bottom: 4px;">Employee Salary Calculation</h2>
+    <p style="font-size: 12.5px; color: var(--text-muted); margin: 0;">Automated monthly payroll computed from daily store attendance and advances.</p>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+    <!-- Month/Year/Working Days Filter Form -->
+    <form method="GET" action="{{ url_for('payroll.salary_page') }}" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <select name="month" class="form-select" style="width: auto; padding: 6px 12px; font-size: 13px;" onchange="this.form.submit()">
+        {% for m in range(1, 13) %}
+        <option value="{{ m }}" {% if m == month %}selected{% endif %}>
+          {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <select name="year" class="form-select" style="width: auto; padding: 6px 12px; font-size: 13px;" onchange="this.form.submit()">
+        {% for y in range(2025, 2030) %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <span style="font-size: 12px; color: var(--text-muted);">Days:</span>
+        <input type="number" name="working_days" value="{{ working_days }}" min="1" max="31" class="form-control" style="width: 65px; padding: 6px 8px; font-size: 13px;" onchange="this.form.submit()" title="Total Working Days in Month (Default 26)">
+      </div>
+    </form>
+
+    <button class="btn btn-secondary" onclick="openAdvanceModal()">
+      <i class="fas fa-hand-holding-dollar" style="color: #f59e0b;"></i> Record Advance
+    </button>
+
+    <a href="{{ url_for('payroll.attendance_page') }}" class="btn btn-primary">
+      <i class="fas fa-clipboard-user"></i> Daily Attendance Register
+    </a>
+  </div>
+</div>
+
+<!-- Payroll Metric Summary Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+  <div class="card" style="padding: 18px; border-left: 4px solid var(--primary);">
+    <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Net Payroll Payable ({{ month_name }} {{ year }})</div>
+    <div style="font-size: 26px; font-weight: 800; color: #10b981; margin-top: 6px;">₹{{ "{:,.2f}".format(total_payroll_cost) }}</div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Calculated take-home for all active staff</div>
+  </div>
+
+  <div class="card" style="padding: 18px; border-left: 4px solid #f59e0b;">
+    <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Advances Deducted</div>
+    <div style="font-size: 26px; font-weight: 800; color: #f59e0b; margin-top: 6px;">₹{{ "{:,.2f}".format(total_advances_deducted) }}</div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Mid-month salary advances subtracted</div>
+  </div>
+
+  <div class="card" style="padding: 18px; border-left: 4px solid #6366f1;">
+    <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Active Staff Covered</div>
+    <div style="font-size: 26px; font-weight: 800; color: var(--text-main); margin-top: 6px;">{{ payroll_summaries|length }}</div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Standard working base: {{ working_days }} days</div>
+  </div>
+</div>
+
+<!-- Main Salary Computation Table -->
+<div class="card">
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="card-title">
+      <i class="fas fa-file-invoice-dollar" style="color: var(--primary);"></i>
+      <span>Monthly Salary Sheet — <strong>{{ month_name }} {{ year }}</strong></span>
+    </div>
+    <span style="font-size: 12px; color: var(--text-muted);">
+      Formula: <code>(Base / {{ working_days }} Days) &times; Paid Days &minus; Advances</code>
+    </span>
+  </div>
+
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Role</th>
+            <th>Base / Daily Rate</th>
+            <th>Attendance Breakdown</th>
+            <th>Effective Days</th>
+            <th>Earned Gross</th>
+            <th>Advances</th>
+            <th>Net In-Hand Salary</th>
+            <th>Status / Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in payroll_summaries %}
+          {% set u = item.user %}
+          {% set rec = item.existing_record %}
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #6366f1); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #ffffff; font-size: 13px;">
+                  {{ u.full_name[:1] }}
+                </div>
+                <div>
+                  <div style="font-weight: 600; color: var(--text-main);">{{ u.full_name }}</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">@{{ u.username }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if u.role == 'admin' %}
+              <span class="badge badge-danger">ADMIN</span>
+              {% elif u.role == 'cashier' %}
+              <span class="badge badge-primary">CASHIER</span>
+              {% else %}
+              <span class="badge badge-warning">TECHNICIAN</span>
+              {% endif %}
+            </td>
+            <td>
+              <div><strong>₹{{ "{:,.2f}".format(item.base_salary) }}</strong></div>
+              <div style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                <span>₹{{ "{:,.2f}".format(item.daily_wage) }}/day</span>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding: 1px 4px; font-size: 10px;" onclick="openSalaryConfigModal({{ u.id }}, '{{ u.full_name }}', {{ item.base_salary }}, {{ item.daily_wage }}, '{{ u.salary_type or 'monthly' }}')" title="Edit Base Salary">
+                  <i class="fas fa-pencil"></i>
+                </button>
+              </div>
+            </td>
+            <td>
+              <div style="font-size: 12px; display: flex; flex-direction: column; gap: 2px;">
+                <span style="color: #10b981;"><i class="fas fa-check"></i> Present: <strong>{{ item.present_days|int }}</strong> d</span>
+                <span style="color: #f59e0b;"><i class="fas fa-adjust"></i> Half-Day: <strong>{{ item.half_days }}</strong> d ({{ item.half_days * 0.5 }} d)</span>
+                {% if item.paid_leaves > 0 %}
+                <span style="color: #8b5cf6;"><i class="fas fa-calendar-plus"></i> Paid Leave: <strong>{{ item.paid_leaves|int }}</strong> d</span>
+                {% endif %}
+                {% if item.absent_days > 0 %}
+                <span style="color: #ef4444;"><i class="fas fa-xmark"></i> Absent: <strong>{{ item.absent_days }}</strong> d</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <div style="font-size: 15px; font-weight: 700; color: var(--primary);">
+                {{ item.effective_work_days }} <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">/ {{ working_days }} d</span>
+              </div>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: var(--text-main);">₹{{ "{:,.2f}".format(item.earned_salary) }}</div>
+              <div style="font-size: 10px; color: var(--text-muted);">{{ item.effective_work_days }} &times; ₹{{ item.daily_wage }}</div>
+            </td>
+            <td>
+              {% if item.advances_deducted > 0 %}
+              <span style="color: #ef4444; font-weight: 600;">-₹{{ "{:,.2f}".format(item.advances_deducted) }}</span>
+              {% else %}
+              <span style="color: var(--text-muted); font-size: 12px;">₹0.00</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="font-size: 16px; font-weight: 800; color: #10b981;">
+                ₹{{ "{:,.2f}".format(item.net_salary) }}
+              </div>
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                {% if rec %}
+                <a href="{{ url_for('payroll.payslip', record_id=rec.id) }}" class="btn btn-secondary btn-sm" style="color: #0284c7; border-color: rgba(2, 132, 199, 0.3);">
+                  <i class="fas fa-file-lines"></i> View Slip
+                </a>
+                <span class="badge badge-success" style="font-size: 10px;">{{ rec.payment_status }}</span>
+                {% else %}
+                <button type="button" class="btn btn-primary btn-sm" onclick="openGenerateModal({{ u.id }}, '{{ u.full_name }}', {{ item.net_salary }})">
+                  <i class="fas fa-check"></i> Generate Slip
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Record Salary Advance -->
+<div class="modal-overlay" id="advanceModal">
+  <div class="modal-box">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-hand-holding-dollar" style="color: #f59e0b;"></i>
+        <span>Record Cash Advance</span>
+      </div>
+      <button onclick="closeAdvanceModal()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;">&times;</button>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('payroll.add_advance') }}">
+        <div class="form-group">
+          <label class="form-label">Select Staff Member *</label>
+          <select name="user_id" class="form-select" required>
+            {% for u in users %}
+            <option value="{{ u.id }}">{{ u.full_name }} ({{ u.role.capitalize() }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Advance Amount (₹) *</label>
+          <input type="number" step="0.01" name="amount" class="form-control" required placeholder="e.g. 2000">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Date Taken *</label>
+          <input type="date" name="date" class="form-control" value="{{ "{:04d}-{:02d}-{:02d}".format(year, month, 1) }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reason / Purpose</label>
+          <input type="text" name="reason" class="form-control" placeholder="e.g. Medical emergency / mid-month cash advance">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeAdvanceModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="background: #f59e0b; border-color: #d97706;">Save Advance</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Staff Base Salary -->
+<div class="modal-overlay" id="salaryConfigModal">
+  <div class="modal-box">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-sliders" style="color: var(--primary);"></i>
+        <span id="salaryConfigTitle">Edit Salary Structure</span>
+      </div>
+      <button onclick="closeSalaryConfigModal()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;">&times;</button>
+    </div>
+    <div class="card-body">
+      <form id="salaryConfigForm" method="POST" action="">
+        <div class="form-group">
+          <label class="form-label">Monthly Base Salary (₹) *</label>
+          <input type="number" step="0.01" id="config_monthly_salary" name="monthly_salary" class="form-control" required oninput="calcDailyRate()">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Daily Wage Rate (₹) *</label>
+          <input type="number" step="0.01" id="config_daily_rate" name="daily_rate" class="form-control" required>
+          <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated as (Monthly Base &divide; 26)</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Pay Structure</label>
+          <select name="salary_type" id="config_salary_type" class="form-select">
+            <option value="monthly">Monthly Fixed (Pro-rated by Attendance)</option>
+            <option value="daily_wage">Strict Daily Wage</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeSalaryConfigModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Structure</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Generate & Finalize Payslip -->
+<div class="modal-overlay" id="generateModal">
+  <div class="modal-box">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-file-invoice-dollar" style="color: #10b981;"></i>
+        <span id="generateModalTitle">Finalize & Generate Payslip</span>
+      </div>
+      <button onclick="closeGenerateModal()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;">&times;</button>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('payroll.generate_payroll') }}">
+        <input type="hidden" name="user_id" id="gen_user_id">
+        <input type="hidden" name="month" value="{{ month }}">
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="working_days" value="{{ working_days }}">
+
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+          <div style="font-size: 12px; color: var(--text-muted);">Calculated Net Pay:</div>
+          <div style="font-size: 22px; font-weight: 800; color: #10b981;" id="gen_net_display">₹0.00</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Period: {{ month_name }} {{ year }}</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Bonus / Store Sales Commission (₹)</label>
+          <input type="number" step="0.01" name="bonus" class="form-control" value="0.00" placeholder="0.00">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">Payment Method</label>
+            <select name="payment_method" class="form-select">
+              <option value="Cash">Cash</option>
+              <option value="Bank Transfer">Bank Transfer / NEFT</option>
+              <option value="UPI">UPI / GPay / PhonePe</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select name="payment_status" class="form-select">
+              <option value="Paid">Mark as Paid</option>
+              <option value="Pending">Pending Payment</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Remarks / Notes</label>
+          <input type="text" name="notes" class="form-control" placeholder="e.g. Salary paid via store cash drawer">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeGenerateModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="background: #10b981; border-color: #059669;">
+            <i class="fas fa-print"></i> Generate & View Payslip
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openAdvanceModal() {
+  document.getElementById('advanceModal').classList.add('active');
+}
+function closeAdvanceModal() {
+  document.getElementById('advanceModal').classList.remove('active');
+}
+
+function openSalaryConfigModal(userId, fullName, baseSalary, dailyWage, salaryType) {
+  document.getElementById('salaryConfigTitle').textContent = 'Edit Salary: ' + fullName;
+  document.getElementById('salaryConfigForm').action = '/payroll/staff/' + userId + '/salary-config';
+  document.getElementById('config_monthly_salary').value = baseSalary;
+  document.getElementById('config_daily_rate').value = dailyWage;
+  document.getElementById('config_salary_type').value = salaryType || 'monthly';
+  document.getElementById('salaryConfigModal').classList.add('active');
+}
+function closeSalaryConfigModal() {
+  document.getElementById('salaryConfigModal').classList.remove('active');
+}
+function calcDailyRate() {
+  const m = parseFloat(document.getElementById('config_monthly_salary').value) || 0;
+  document.getElementById('config_daily_rate').value = (m / 26).toFixed(2);
+}
+
+function openGenerateModal(userId, fullName, netSalary) {
+  document.getElementById('gen_user_id').value = userId;
+  document.getElementById('generateModalTitle').textContent = 'Generate Slip: ' + fullName;
+  document.getElementById('gen_net_display').textContent = '₹' + Number(netSalary).toLocaleString('en-IN', {minimumFractionDigits: 2});
+  document.getElementById('generateModal').classList.add('active');
+}
+function closeGenerateModal() {
+  document.getElementById('generateModal').classList.remove('active');
+}
+</script>
+{% endblock %}

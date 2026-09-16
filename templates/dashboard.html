@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — MOBIXPRO Mobile Shop System{% endblock %}
+{% block header_title %}Store Analytics & Business Intelligence{% endblock %}
+
+{% block content %}
+<!-- Welcome & Quick Session Bar Matching Reference Top Banner -->
+<div class="welcome-banner">
+  <div style="display: flex; align-items: center; gap: 16px;">
+    <div style="width: 50px; height: 50px; border-radius: var(--radius-md); background: linear-gradient(135deg, #0284c7, #6366f1); display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 22px; font-weight: 800; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);">
+      {{ session.get('full_name', 'U')[:1] }}
+    </div>
+    <div>
+      <div class="welcome-title">
+        <span>Welcome back, {{ session.get('full_name', 'User') }}!</span>
+      </div>
+      <div class="welcome-sub">
+        Signed in as <span class="badge badge-primary" style="font-size: 10px; padding: 2px 8px;">{{ session.get('role', 'User')|capitalize }}</span> • Retail Terminal & Mobile Inventory Hub
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+    <!-- Live Realtime Clock Pill -->
+    <div class="live-clock-pill">
+      <i class="fas fa-clock"></i>
+      <span id="liveClockText">Loading live time...</span>
+    </div>
+
+    {% if session.get('role') in ['admin', 'cashier'] %}
+    <a href="{{ url_for('pos.billing') }}" class="btn btn-primary btn-sm">
+      <i class="fas fa-cart-shopping"></i> Quick POS
+    </a>
+    <a href="{{ url_for('inventory.mobiles_list') }}?open_modal=1" class="btn btn-secondary btn-sm" style="font-weight: 700;">
+      <i class="fas fa-plus"></i> Add Mobile
+    </a>
+    <a href="{{ url_for('inventory.accessories_list') }}?open_modal=1" class="btn btn-secondary btn-sm" style="font-weight: 700;">
+      <i class="fas fa-plus"></i> Add Accessory
+    </a>
+    {% endif %}
+
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-sm" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 700; padding: 7px 14px; border-radius: var(--radius-sm);" title="Sign out of your session">
+      <i class="fas fa-arrow-right-from-bracket"></i>
+      <span>Logout</span>
+    </a>
+  </div>
+</div>
+
+<!-- 5 Vibrant KPI Cards Grid (Reference Mockup Colors & Layout) -->
+<div class="kpi-grid-5">
+  <!-- 1. Total Products (Cyan / Blue Gradient) -->
+  <div class="kpi-card-vibrant kpi-grad-products">
+    <div>
+      <div class="kpi-label">Total Products</div>
+      <div class="kpi-num">{{ kpi.total_products }}</div>
+      <div class="kpi-badge-trend">
+        <i class="fas fa-layer-group"></i> Active Catalog
+      </div>
+    </div>
+    <div class="kpi-icon-circle">
+      <i class="fas fa-mobile-screen"></i>
+    </div>
+  </div>
+
+  <!-- 2. In Stock (Emerald / Green Gradient) -->
+  <div class="kpi-card-vibrant kpi-grad-stock">
+    <div>
+      <div class="kpi-label">In Stock</div>
+      <div class="kpi-num">{{ kpi.in_stock }}</div>
+      <div class="kpi-badge-trend">
+        <i class="fas fa-boxes-stacked"></i> Ready for Sale
+      </div>
+    </div>
+    <div class="kpi-icon-circle">
+      <i class="fas fa-box-check"></i>
+    </div>
+  </div>
+
+  <!-- 3. Total Sales (Purple / Violet Gradient) -->
+  <div class="kpi-card-vibrant kpi-grad-sales">
+    <div>
+      <div class="kpi-label">Total Sales</div>
+      <div class="kpi-num">₹{{ "{:,.0f}".format(kpi.total_sales) }}</div>
+      <div class="kpi-badge-trend">
+        <i class="fas fa-arrow-trend-up"></i> Today: ₹{{ "{:,.0f}".format(kpi.today_sales) }}
+      </div>
+    </div>
+    <div class="kpi-icon-circle">
+      <i class="fas fa-wallet"></i>
+    </div>
+  </div>
+
+  <!-- 4. Customers (Golden Amber Gradient) -->
+  <div class="kpi-card-vibrant kpi-grad-customers">
+    <div>
+      <div class="kpi-label">Customers</div>
+      <div class="kpi-num">{{ kpi.total_customers }}</div>
+      <div class="kpi-badge-trend">
+        <i class="fas fa-user-check"></i> Active Profiles
+      </div>
+    </div>
+    <div class="kpi-icon-circle">
+      <i class="fas fa-users"></i>
+    </div>
+  </div>
+
+  <!-- 5. Low Stock (Hot Rose / Red Gradient) -->
+  <div class="kpi-card-vibrant kpi-grad-lowstock">
+    <div>
+      <div class="kpi-label">Low Stock</div>
+      <div class="kpi-num">{{ kpi.low_stock_count }}</div>
+      <div class="kpi-badge-trend">
+        <i class="fas fa-triangle-exclamation"></i> {% if kpi.low_stock_count > 0 %}Restock Alert{% else %}Levels Safe{% endif %}
+      </div>
+    </div>
+    <div class="kpi-icon-circle">
+      <i class="fas fa-bell"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row: Sales Overview & Top Selling Brands -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 28px;">
+  <!-- Sales Trend Glowing Area Chart -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-chart-line" style="color: var(--primary);"></i>
+        <span>Sales Overview (7-Day Revenue Trend)</span>
+      </div>
+      <span class="badge badge-primary">Daily Analytics</span>
+    </div>
+    <div class="card-body">
+      <div style="position: relative; height: 270px;">
+        <canvas id="salesTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Selling Brands Donut Chart -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-chart-pie" style="color: #a855f7;"></i>
+        <span>Top Selling Brands</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="position: relative; height: 270px;">
+        <canvas id="brandSplitChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Alerts & Recent Transactions Grid -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <!-- Overdue EMI Alerts -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="color: #fb7185;">
+        <i class="fas fa-triangle-exclamation"></i>
+        <span>Overdue EMI Alerts (Auto Fine Applied)</span>
+      </div>
+      <a href="{{ url_for('emi.emi_list', status='Overdue') }}" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Due Date</th>
+              <th>EMI Due</th>
+              <th>Fine</th>
+              <th>Total Due</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inst in overdue_installments %}
+            <tr>
+              <td>
+                <strong>{{ inst.account.customer.name }}</strong>
+                <div style="font-size: 11px; color: var(--text-muted);">{{ inst.account.customer.phone }}</div>
+              </td>
+              <td><span class="badge badge-danger">{{ inst.due_date.strftime('%d-%b') }}</span></td>
+              <td>₹{{ "{:,.2f}".format(inst.amount) }}</td>
+              <td style="color: #fb7185; font-weight: 700;">+ ₹{{ "{:,.0f}".format(inst.fine_amount) }}</td>
+              <td style="font-weight: 800; color: var(--text-main);">₹{{ "{:,.2f}".format(inst.total_due) }}</td>
+              <td>
+                <a href="{{ url_for('emi.emi_detail', account_id=inst.account.id) }}" class="btn btn-primary btn-sm" style="padding: 4px 10px;">Pay</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 28px;">
+                <i class="fas fa-circle-check" style="color: #10b981; font-size: 22px;"></i><br/>
+                <span style="display: inline-block; margin-top: 6px;">All EMI installments are current and up to date!</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Low Stock Warnings -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="color: #fcd34d;">
+        <i class="fas fa-box-archive"></i>
+        <span>Low Stock Notifications</span>
+      </div>
+      <a href="{{ url_for('inventory.mobiles_list') }}" class="btn btn-secondary btn-sm">Restock</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Item Name</th>
+              <th>Type</th>
+              <th>Stock Left</th>
+              <th>Threshold</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in low_stock_mobiles %}
+            <tr>
+              <td>
+                <strong>{{ m.brand }} {{ m.model }}</strong>
+                <div style="font-size: 11px; color: var(--text-muted);">{{ m.color }} • {{ m.storage }}</div>
+              </td>
+              <td><span class="badge badge-primary">Mobile</span></td>
+              <td><span class="badge badge-danger">{{ m.stock_quantity }} Left</span></td>
+              <td>{{ m.min_stock_alert }}</td>
+              <td><a href="{{ url_for('inventory.mobiles_list') }}" class="btn btn-secondary btn-sm" style="padding: 3px 8px;">Edit</a></td>
+            </tr>
+            {% endfor %}
+            {% for a in low_stock_accessories %}
+            <tr>
+              <td><strong>{{ a.name }}</strong></td>
+              <td><span class="badge badge-info">{{ a.category }}</span></td>
+              <td><span class="badge badge-danger">{{ a.stock_quantity }} Left</span></td>
+              <td>{{ a.min_stock_alert }}</td>
+              <td><a href="{{ url_for('inventory.accessories_list') }}" class="btn btn-secondary btn-sm" style="padding: 3px 8px;">Edit</a></td>
+            </tr>
+            {% endfor %}
+            {% if not low_stock_mobiles and not low_stock_accessories %}
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 28px;">
+                <i class="fas fa-boxes-stacked" style="color: #10b981; font-size: 22px;"></i><br/>
+                <span style="display: inline-block; margin-top: 6px;">Inventory healthy. No critical low-stock alerts.</span>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Invoices Row (Reference Recent Sales Table) -->
+<div class="card" style="margin-top: 24px;">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fas fa-receipt" style="color: var(--primary);"></i>
+      <span>Recent Sales Transactions</span>
+    </div>
+    <a href="{{ url_for('pos.invoices_list') }}" class="btn btn-secondary btn-sm">All Invoices</a>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Date & Time</th>
+            <th>Customer</th>
+            <th>Payment Mode</th>
+            <th>Status</th>
+            <th>Amount</th>
+            <th>Receipt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in recent_invoices %}
+          <tr>
+            <td><strong>#{{ inv.invoice_number }}</strong></td>
+            <td>{{ inv.created_at.strftime('%d-%b-%Y %H:%M') }}</td>
+            <td>
+              <strong>{{ inv.customer.name }}</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ inv.customer.phone }}</div>
+            </td>
+            <td><span class="badge badge-info">{{ inv.payment_mode }}</span></td>
+            <td>
+              <span class="badge {% if inv.payment_status == 'Paid' %}badge-success{% else %}badge-warning{% endif %}">
+                {{ inv.payment_status }}
+              </span>
+            </td>
+            <td style="font-weight: 700; color: var(--text-main);">₹{{ "{:,.2f}".format(inv.final_total) }}</td>
+            <td>
+              <a href="{{ url_for('pos.view_invoice', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm" style="padding: 4px 10px;">
+                <i class="fas fa-eye"></i> View
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 28px;">No invoices recorded yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

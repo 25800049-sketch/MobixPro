@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — MOBIXPRO Mobile Shop Management System</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+      background-image: 
+        radial-gradient(at 15% 20%, rgba(2, 132, 199, 0.08) 0px, transparent 50%),
+        radial-gradient(at 85% 25%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+        radial-gradient(at 50% 85%, rgba(14, 165, 233, 0.06) 0px, transparent 50%);
+      padding: 24px;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+
+    /* Outer Stage Wrapper */
+    .login-stage {
+      width: 100%;
+      max-width: 960px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Main Split Card */
+    .login-split-card {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 28px;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.08),
+                  0 1px 3px rgba(15, 23, 42, 0.04);
+      overflow: hidden;
+    }
+
+    /* Left Hero Showcase Panel */
+    .login-hero-panel {
+      position: relative;
+      background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+      padding: 38px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+
+    .login-hero-panel::after {
+      content: '';
+      position: absolute;
+      bottom: -60px;
+      left: -60px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(2, 132, 199, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Brand Chip at top of hero */
+    .hero-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(2, 132, 199, 0.1);
+      border: 1px solid rgba(2, 132, 199, 0.25);
+      padding: 6px 14px;
+      border-radius: 999px;
+      align-self: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .hero-brand i {
+      color: #0284c7;
+      font-size: 14px;
+    }
+
+    .hero-brand span {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0284c7;
+      letter-spacing: 0.5px;
+    }
+
+    /* 3D Floating Phone Art Thumbnail */
+    .hero-artwork-box {
+      width: 100%;
+      height: 220px;
+      border-radius: 18px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(2, 132, 199, 0.2);
+      margin-bottom: 22px;
+      background: #ffffff;
+    }
+
+    .hero-artwork-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s ease;
+    }
+
+    .hero-artwork-box:hover img {
+      transform: scale(1.05);
+    }
+
+    /* Main Headline & Badge Pills */
+    .hero-headline {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -0.5px;
+      margin-bottom: 18px;
+      color: #0f172a;
+    }
+
+    .hero-badges-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .hero-badge-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #334155;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      transition: all 0.2s ease;
+    }
+
+    .hero-badge-pill:hover {
+      border-color: #0284c7;
+      background: #f0f9ff;
+      transform: translateY(-2px);
+    }
+
+    .hero-badge-pill i {
+      color: #0284c7;
+      font-size: 13px;
+    }
+
+    /* Carousel Pagination Dots */
+    .hero-dots {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      transition: all 0.3s ease;
+    }
+
+    .hero-dot.active {
+      width: 24px;
+      border-radius: 999px;
+      background: #0284c7;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+    }
+
+    /* Right Form Panel */
+    .login-form-panel {
+      padding: 44px 38px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      background: #ffffff;
+    }
+
+    .form-header {
+      margin-bottom: 28px;
+    }
+
+    .brand-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .brand-icon-mini {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 16px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .brand-title-text {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      color: #0f172a;
+    }
+
+    .login-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.4px;
+      margin-bottom: 4px;
+    }
+
+    .login-subtitle {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    /* Flash Messages */
+    .flash-box {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      color: #e11d48;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .flash-box.success {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+      color: #16a34a;
+    }
+
+    /* Form Fields */
+    .field-group {
+      margin-bottom: 20px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .input-box-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-box-wrapper i.left-icon {
+      position: absolute;
+      left: 14px;
+      color: #94a3b8;
+      font-size: 14px;
+      pointer-events: none;
+      transition: color 0.2s ease;
+    }
+
+    .input-cyber {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 12px 42px 12px 40px;
+      font-size: 14px;
+      color: #0f172a;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .input-cyber:focus {
+      border-color: #0284c7;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    .input-cyber:focus ~ i.left-icon {
+      color: #0284c7;
+    }
+
+    .btn-toggle-pwd {
+      position: absolute;
+      right: 14px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 14px;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .btn-toggle-pwd:hover {
+      color: #0284c7;
+    }
+
+    /* Options Row (Remember / Forgot) */
+    .options-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      font-size: 12.5px;
+    }
+
+    .remember-check {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    .remember-check input {
+      accent-color: #0284c7;
+    }
+
+    .forgot-link {
+      color: #0284c7;
+      text-decoration: none;
+      font-weight: 600;
+      transition: opacity 0.2s ease;
+    }
+
+    .forgot-link:hover {
+      opacity: 0.85;
+      text-decoration: underline;
+    }
+
+    /* Gradient CTA Button */
+    .btn-submit-cta {
+      width: 100%;
+      padding: 13px 20px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      font-size: 14.5px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5);
+      filter: brightness(1.05);
+    }
+
+    .btn-submit-cta:active {
+      transform: translateY(0);
+    }
+
+    /* Responsive */
+    @media (max-width: 860px) {
+      .login-split-card {
+        grid-template-columns: 1fr;
+        max-width: 480px;
+      }
+      .login-hero-panel {
+        display: none;
+      }
+      .login-form-panel {
+        padding: 32px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Background Mobile Floating Universe -->
+  <div class="floating-mobile-universe" id="floatingMobileUniverse" aria-hidden="true">
+    <div class="floating-universe-inner">
+      <div class="floating-glow-orb orb-cyan"></div>
+      <div class="floating-glow-orb orb-indigo"></div>
+      <div class="floating-glow-orb orb-magenta"></div>
+
+      <!-- 1. Flagship 3D Smartphone -->
+      <div class="floating-phone-flagship">
+        <div class="phone-inner-frame">
+          <div>
+            <div class="phone-dynamic-island">
+              <div class="island-camera-dot"></div>
+              <div class="island-sensor-dot"></div>
+            </div>
+            <div class="phone-status-bar">
+              <span>09:41</span>
+              <span><i class="fas fa-signal" style="font-size: 7px;"></i> 5G <i class="fas fa-battery-full" style="font-size: 8px;"></i></span>
+            </div>
+          </div>
+          <div class="phone-screen-widget">
+            <div class="widget-title"><i class="fas fa-bolt"></i> MOBIX PRO ERP</div>
+            <div class="widget-value">Secure Portal</div>
+            <div class="widget-sub"><i class="fas fa-shield-halved"></i> 256-bit Encrypted</div>
+          </div>
+          <div>
+            <div class="phone-apps-row">
+              <div class="mini-app-icon app-pos"><i class="fas fa-cash-register"></i></div>
+              <div class="mini-app-icon app-repair"><i class="fas fa-wrench"></i></div>
+              <div class="mini-app-icon app-ai"><i class="fas fa-wand-magic-sparkles"></i></div>
+            </div>
+            <div class="phone-home-indicator"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Futuristic Holographic Phone -->
+      <div class="floating-phone-holo">
+        <div class="holo-circuits-bg"></div>
+        <div>
+          <div class="holo-punch-hole"></div>
+          <div class="phone-status-bar" style="color: #a5b4fc; font-size: 8px; margin-top: 6px;">
+            <span>AI CORE READY</span>
+            <span><i class="fas fa-wifi" style="font-size: 7px;"></i> 100%</span>
+          </div>
+        </div>
+        <div class="holo-wave-container">
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+        </div>
+        <div class="holo-info-chip">
+          <div class="holo-chip-text">SYSTEM STATUS</div>
+          <div class="holo-chip-metric"><i class="fas fa-circle-check" style="color: #10b981;"></i> ONLINE & SYNCED</div>
+        </div>
+      </div>
+
+      <!-- 3. Optical Depth Satellite Phone -->
+      <div class="floating-phone-orbit">
+        <div class="orbit-camera-bump">
+          <div class="orbit-lens-mini"></div>
+          <div class="orbit-lens-mini"></div>
+          <div class="orbit-lens-mini"></div>
+        </div>
+      </div>
+
+      <!-- 4. Floating Tech Satellites -->
+      <div class="tech-satellite satellite-chip"><i class="fas fa-microchip"></i></div>
+      <div class="tech-satellite satellite-lens"><i class="fas fa-circle-notch"></i></div>
+      <div class="tech-satellite satellite-repair"><i class="fas fa-screwdriver-wrench"></i></div>
+      <div class="tech-satellite satellite-bolt"><i class="fas fa-bolt"></i></div>
+    </div>
+  </div>
+
+  <!-- Quick Floating Theme Switcher Floating Pill -->
+  <div style="position: fixed; top: 20px; right: 24px; z-index: 50; display: flex; gap: 10px;">
+    <button type="button" class="btn-icon-pill" id="floating-theme-toggle-btn" title="Toggle Floating Mobile Background" style="cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0; color: #0284c7; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08); position: relative;">
+      <i class="fas fa-mobile-screen"></i>
+      <span class="floating-theme-indicator" id="floatingThemeIndicator" title="Floating Theme Active"></span>
+    </button>
+  </div>
+
+  <div class="login-stage">
+    <div class="login-split-card">
+      
+      <!-- Left: Cyber 3D Hero Showcase -->
+      <div class="login-hero-panel">
+        <div>
+          <div class="hero-brand">
+            <i class="fas fa-mobile-screen-button"></i>
+            <span>MOBIXPRO ERP 2.0</span>
+          </div>
+
+          <!-- 3D Smartphone Image -->
+          <div class="hero-artwork-box">
+            <img src="{{ url_for('static', filename='img/login_hero.jpg') }}" alt="Futuristic Glowing Smartphones">
+          </div>
+
+          <h2 class="hero-headline">Your One Stop Mobile Solution</h2>
+
+          <!-- 4 Feature Pills Matching Mockup -->
+          <div class="hero-badges-grid">
+            <div class="hero-badge-pill">
+              <i class="fas fa-mobile-alt"></i>
+              <span>Latest Mobiles</span>
+            </div>
+            <div class="hero-badge-pill">
+              <i class="fas fa-tag"></i>
+              <span>Best Prices</span>
+            </div>
+            <div class="hero-badge-pill">
+              <i class="fas fa-shield-halved"></i>
+              <span>Trusted Service</span>
+            </div>
+            <div class="hero-badge-pill">
+              <i class="fas fa-headset"></i>
+              <span>Customer Support</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination Dots -->
+        <div class="hero-dots">
+          <span class="hero-dot active"></span>
+          <span class="hero-dot"></span>
+          <span class="hero-dot"></span>
+        </div>
+      </div>
+
+      <!-- Right: Form Section -->
+      <div class="login-form-panel">
+        <div class="form-header">
+          <div class="brand-logo-row">
+            <div class="brand-icon-mini">
+              <i class="fas fa-bolt"></i>
+            </div>
+            <div class="brand-title-text">MOBIXPRO Management</div>
+          </div>
+          <h1 class="login-title">Sign In</h1>
+          <p class="login-subtitle">Access your store, inventory, POS and service center</p>
+        </div>
+
+        <!-- Flash messages if any -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash-box {% if category == 'success' %}success{% endif %}">
+                <i class="fas {% if category == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.login') }}">
+          <!-- Username / Email Input -->
+          <div class="field-group">
+            <label class="field-label" for="username">Username or Email</label>
+            <div class="input-box-wrapper">
+              <i class="fas fa-user left-icon"></i>
+              <input type="text" id="username" name="username" class="input-cyber" placeholder="e.g. admin" required autocomplete="username" autofocus>
+            </div>
+          </div>
+
+          <!-- Password Input -->
+          <div class="field-group">
+            <label class="field-label" for="password">Password</label>
+            <div class="input-box-wrapper">
+              <i class="fas fa-lock left-icon"></i>
+              <input type="password" id="password" name="password" class="input-cyber" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="btn-toggle-pwd" onclick="togglePasswordVisibility()" aria-label="Toggle password visibility">
+                <i class="fas fa-eye" id="eyeIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Remember me & Forgot -->
+          <div class="options-row">
+            <label class="remember-check">
+              <input type="checkbox" name="remember" checked>
+              <span>Remember me</span>
+            </label>
+            <a href="javascript:void(0)" class="forgot-link" onclick="alert('Please contact your administrator to reset credentials.')">Forgot password?</a>
+          </div>
+
+          <!-- Gradient CTA Button -->
+          <button type="submit" class="btn-submit-cta">
+            <span>Sign In to Dashboard</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </form>
+
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function togglePasswordVisibility() {
+      const pwdInput = document.getElementById('password');
+      const eyeIcon = document.getElementById('eyeIcon');
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        eyeIcon.className = 'fas fa-eye-slash';
+      } else {
+        pwdInput.type = 'password';
+        eyeIcon.className = 'fas fa-eye';
+      }
+    }
+
+  </script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

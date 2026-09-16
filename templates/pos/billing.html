@@ -1,0 +1,674 @@
+{% extends 'base.html' %}
+
+{% block title %}POS Billing Register — MOBIXPRO{% endblock %}
+{% block header_title %}Point of Sale (POS) Checkout{% endblock %}
+
+{% block content %}
+{% if session.get('role') == 'cashier' %}
+<!-- Cashier Daily Attendance Status Banner -->
+<div class="card" style="margin-bottom: 18px; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, rgba(2, 132, 199, 0.05), rgba(99, 102, 241, 0.05)); border: 1px solid rgba(2, 132, 199, 0.2); border-radius: var(--radius-md);">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div style="width: 38px; height: 38px; border-radius: 8px; background: linear-gradient(135deg, var(--primary), #6366f1); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+      <i class="fas fa-clipboard-user"></i>
+    </div>
+    <div>
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span>Cashier Attendance ({{ today_date.strftime('%A, %d %B %Y') if today_date else 'Today' }}):</span>
+        {% if today_attendance %}
+          {% if today_attendance.status == 'present' %}
+            <span class="badge badge-success" style="font-size: 11px;"><i class="fas fa-check-circle"></i> Present</span>
+          {% elif today_attendance.status == 'half_day' %}
+            <span class="badge badge-warning" style="font-size: 11px;"><i class="fas fa-adjust"></i> Half Day</span>
+          {% elif today_attendance.status == 'leave' %}
+            <span class="badge badge-info" style="font-size: 11px;"><i class="fas fa-calendar-check"></i> Paid Leave</span>
+          {% elif today_attendance.status == 'absent' %}
+            <span class="badge badge-danger" style="font-size: 11px;"><i class="fas fa-times-circle"></i> Absent</span>
+          {% endif %}
+          {% if today_attendance.time_in %}
+            <span style="font-size: 12px; color: var(--text-muted);"><i class="fas fa-clock"></i> In: {{ today_attendance.time_in }}</span>
+          {% endif %}
+          {% if today_attendance.time_out %}
+            <span style="font-size: 12px; color: var(--text-muted);"><i class="fas fa-clock"></i> Out: {{ today_attendance.time_out }}</span>
+          {% endif %}
+        {% else %}
+          <span class="badge badge-secondary" style="font-size: 11px;"><i class="fas fa-hourglass-start"></i> Not Marked Yet</span>
+        {% endif %}
+      </div>
+      <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+        Daily attendance register is maintained by Admin. Showing only cashier attendance logs.
+      </div>
+    </div>
+  </div>
+  <a href="{{ url_for('payroll.attendance_page') }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px;">
+    <i class="fas fa-table-list"></i> View Cashier Attendance
+  </a>
+</div>
+{% endif %}
+
+<div class="pos-grid">
+  <!-- Left: Catalog & Search -->
+  <div>
+    <!-- Live Item Search & Scan -->
+    <div class="card" style="margin-bottom: 20px;">
+      <div class="card-body" style="padding: 16px 20px;">
+        <div style="position: relative;">
+          <label class="form-label" style="font-size: 13px;">
+            <i class="fas fa-barcode"></i> Scan Barcode / Search Device or Accessory (IMEI, Model, Name)
+          </label>
+          <input type="text" id="posSearchInput" class="form-control" placeholder="Type IMEI number, iPhone, Charger, AirDots..." autofocus>
+          <div id="posSearchResults" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 50; display: none; max-height: 280px; overflow-y: auto;"></div>
+        </div>
+      </div>
+    </div>
+
+    {% if preorder %}
+    <!-- Fulfill Pre-Order Flagship Banner -->
+    <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.12)); border: 1.5px solid rgba(99, 102, 241, 0.4); box-shadow: 0 4px 18px rgba(99, 102, 241, 0.15);">
+      <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; border-radius: var(--radius-md); background: linear-gradient(135deg, #6366f1, #a855f7); display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 20px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+            <i class="fas fa-ticket"></i>
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <strong style="font-size: 15px; color: var(--text-main);">Fulfilling Pre-Order #{{ preorder.booking_no }}</strong>
+              <span class="badge badge-primary" style="font-size: 10px; background: #6366f1;">Queue #{{ preorder.queue_priority }} VIP</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              Customer: <strong>{{ preorder.customer.name }}</strong> ({{ preorder.customer.phone }}) • Handset: <strong>{{ preorder.brand }} {{ preorder.model }}</strong> ({{ preorder.variant }}) • Advance Paid: <strong style="color: #6366f1;">₹{{ "{:,.2f}".format(preorder.token_advance) }}</strong>
+            </p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge badge-success" style="padding: 6px 12px; font-size: 12px; font-weight: 700;">
+            <i class="fas fa-check"></i> ₹{{ "{:,.0f}".format(preorder.token_advance) }} Advance Auto-Credited
+          </span>
+          <a href="{{ url_for('pos.billing') }}" class="btn btn-secondary btn-sm" style="font-size: 11px;">Clear</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Trade-In Old Phone Banner -->
+    <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(2, 132, 199, 0.08), rgba(99, 102, 241, 0.08)); border-color: rgba(2, 132, 199, 0.25);">
+      <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; border-radius: var(--radius-md); background: linear-gradient(135deg, #0284c7, #6366f1); display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 20px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
+            <i class="fas fa-repeat"></i>
+          </div>
+          <div>
+            <strong style="font-size: 15px; color: var(--text-main);">Phone Exchange / Old Phone Trade-In</strong>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Evaluate customer's old phone using AI and deduct exchange credit from this bill.</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('posExchangeModal')">
+          <i class="fas fa-calculator"></i> Value Old Phone
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Pick Catalog -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-mobile" style="color: var(--primary);"></i> Available In-Stock Mobiles</div>
+        <a href="{{ url_for('inventory.mobiles_list') }}" class="btn btn-secondary btn-sm">Full Catalog</a>
+      </div>
+      <div class="card-body" style="padding: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
+          {% for m in mobiles[:8] %}
+          <div class="card" style="margin-bottom: 0; padding: 12px; cursor: pointer; border: 1px solid var(--border-color); transition: var(--transition); display: flex; gap: 10px; align-items: center;" 
+               onclick='addToCart({id: {{ m.id }}, type: "mobile", name: "{% if m.brand in m.model %}{{ m.model }}{% else %}{{ m.brand }} {{ m.model }}{% endif %} ({{ m.ram }}/{{ m.storage }})", price: {{ m.selling_price }}, imei: "{{ m.imei_1 }}", stock: {{ m.stock_quantity }}})'
+               onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 4px 12px rgba(2, 132, 199, 0.15)'" 
+               onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'">
+            <div style="width: 52px; height: 52px; border-radius: var(--radius-sm); background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; padding: 3px; border: 1px solid var(--border-color);">
+              <img src="{{ m.image_url or '/static/img/phones/iphone_15_pro_max.jpg' }}"
+                   alt="{{ m.model }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 700; font-size: 13px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{% if m.brand in m.model %}{{ m.model }}{% else %}{{ m.brand }} {{ m.model }}{% endif %}</div>
+              <div style="font-size: 10px; color: var(--text-muted); margin: 2px 0;">{{ m.color }} • {{ m.storage }}</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                <span style="font-weight: 800; color: var(--primary); font-size: 13px;">₹{{ "{:,.0f}".format(m.selling_price) }}</span>
+                <span class="badge badge-primary" style="font-size: 10px; padding: 2px 6px;">+ Add</span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Pick Accessories -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-headphones"></i> Popular Accessories</div>
+      </div>
+      <div class="card-body" style="padding: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">
+          {% for a in accessories[:8] %}
+          <div class="card" style="margin-bottom: 0; padding: 12px; cursor: pointer; border: 1px solid var(--border-color); transition: var(--transition);"
+               onclick='addToCart({id: {{ a.id }}, type: "accessory", name: "{{ a.name }}", price: {{ a.selling_price }}, stock: {{ a.stock_quantity }}})'
+               onmouseover="this.style.borderColor='var(--secondary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+            <div style="font-weight: 600; font-size: 12.5px; color: var(--text-main);">{{ a.name }}</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin: 2px 0;">{{ a.category }}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+              <span style="font-weight: 700; color: var(--text-main);">₹{{ "{:,.0f}".format(a.selling_price) }}</span>
+              <span class="badge badge-info">+ Add</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: POS Sticky Register & Cart -->
+  <div>
+    <div class="pos-cart-panel">
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-shrink: 0;">
+        <div style="font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-cart-shopping" style="color: var(--primary);"></i> Current Register Bill
+        </div>
+        <button type="button" onclick="cart=[]; exchangePhoneData=null; renderCart();" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px;">
+          Clear
+        </button>
+      </div>
+
+      <!-- Customer Selector -->
+      <div style="margin-top: 12px; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+          <label class="form-label" style="font-size: 11px; text-transform: uppercase; margin-bottom: 0;">
+            <i class="fas fa-user"></i> Customer Selection
+          </label>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('posQuickAddCustomerModal')" style="padding: 2px 8px; font-size: 11px; color: var(--primary); border-color: var(--border-color);" title="Register a new customer">
+            <i class="fas fa-user-plus"></i> + New Customer
+          </button>
+        </div>
+        <select id="customerSelect" class="form-select" style="padding: 8px 12px; font-size: 13px;">
+          <option value="new">+ Register New Walk-in Customer</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}" data-name="{{ c.name }}" data-phone="{{ c.phone }}" data-email="{{ c.email or '' }}" data-address="{{ c.address or '' }}">{{ c.name }} ({{ c.phone }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- New Customer Inline Inputs -->
+      <div id="newCustomerFields" style="margin-top: 8px; padding: 10px 12px; background: #f8fafc; border: 1px dashed var(--border-color); border-radius: var(--radius-md); flex-shrink: 0;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+          <span><i class="fas fa-id-card"></i> New Customer Details</span>
+          <span id="custLookupIndicator" style="font-size: 10px; color: var(--text-muted); font-weight: normal;"></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <input type="text" id="custNameInput" placeholder="Full Name *" class="form-control" style="padding: 6px 10px; font-size: 12px;">
+          <input type="text" id="custPhoneInput" placeholder="Phone (10 Digits) *" class="form-control" style="padding: 6px 10px; font-size: 12px;" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+          <input type="email" id="custEmailInput" placeholder="Email (for bill)" class="form-control" style="padding: 6px 10px; font-size: 12px;">
+          <input type="text" id="custAddressInput" placeholder="City / Address" class="form-control" style="padding: 6px 10px; font-size: 12px;">
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+          <span id="inlineCustMsg" style="font-size: 11px; color: var(--success); display: none;"></span>
+          <button type="button" id="btnSaveInlineCustomer" class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size: 11px;">
+            <i class="fas fa-save"></i> Save Customer
+          </button>
+        </div>
+      </div>
+
+      <!-- Selected Existing Customer Email & Info Box -->
+      <div id="selectedCustomerInfo" style="display: none; margin-top: 8px; padding: 10px 12px; background: rgba(2, 132, 199, 0.05); border: 1px solid rgba(2, 132, 199, 0.25); border-radius: var(--radius-md); flex-shrink: 0; font-size: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <strong id="selectedCustName" style="color: var(--text-main); font-size: 12.5px;">Customer Name</strong>
+          <span id="selectedCustPhone" style="color: var(--text-muted); font-size: 11px;">Phone</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
+          <i class="fas fa-envelope" style="color: var(--primary); font-size: 12px;"></i>
+          <input type="email" id="selectedCustEmailInput" placeholder="Customer email for Gmail bill (optional)" class="form-control" style="padding: 4px 8px; font-size: 11.5px; height: auto;">
+        </div>
+      </div>
+
+      <!-- Active Trade-In Discount Banner -->
+      <div id="tradeinActiveBanner" style="display: none; align-items: center; justify-content: space-between; margin-top: 8px; padding: 8px 12px; background: rgba(16, 185, 129, 0.15); border: 1px dashed var(--success); border-radius: var(--radius-md); font-size: 12px; color: var(--success); flex-shrink: 0;">
+      </div>
+
+      <!-- Cart Items List -->
+      <div class="pos-cart-items" id="posCartItems">
+        <div id="emptyCartPlaceholder" style="text-align: center; color: var(--text-muted); padding: 24px 10px;">
+          <i class="fas fa-basket-shopping" style="font-size: 28px; opacity: 0.3; margin-bottom: 6px;"></i>
+          <div style="font-weight: 600;">Register is empty</div>
+          <div style="font-size: 11px;">Search or click items on the left to add</div>
+        </div>
+      </div>
+
+      <!-- Bill Calculation Totals -->
+      <div class="pos-cart-totals" style="border-top: 1px solid var(--border-color); padding-top: 10px; flex-shrink: 0; margin-top: auto;">
+        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+          <span style="color: var(--text-muted);">Subtotal</span>
+          <span id="posSubtotal" style="font-weight: 600;">₹0.00</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
+            <span style="color: var(--text-muted);">GST %:</span>
+            <input type="number" id="posTaxRate" value="18" min="0" max="28" style="width: 55px; padding: 2px 6px; font-size: 12px;" class="form-control">
+          </div>
+          <div style="text-align: right; font-size: 12px; font-weight: 600;" id="posTaxAmount">₹0.00</div>
+        </div>
+
+        <!-- Discount Options (Rupees ₹ or Percentage %) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="color: var(--text-muted);">Discount:</span>
+            <!-- ₹ / % Toggle Segmented Switch -->
+            <div style="display: inline-flex; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; background: #f1f5f9; padding: 1px;">
+              <button type="button" id="btnDiscountAmt" class="btn btn-sm" style="padding: 1px 7px; font-size: 11px; font-weight: 700; border: none; border-radius: 4px; background: var(--primary); color: #ffffff; cursor: pointer; transition: var(--transition);" title="Discount in Rupees (₹)">₹</button>
+              <button type="button" id="btnDiscountPct" class="btn btn-sm" style="padding: 1px 7px; font-size: 11px; font-weight: 700; border: none; border-radius: 4px; background: transparent; color: var(--text-muted); cursor: pointer; transition: var(--transition);" title="Discount in Percentage (%)">%</button>
+            </div>
+            <input type="hidden" id="posDiscountMode" value="amount">
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="number" id="posDiscount" value="0" min="0" step="any" style="width: 70px; padding: 2px 6px; font-size: 12px; text-align: right;" class="form-control" placeholder="0">
+              <span id="posDiscountUnitSymbol" style="font-size: 11px; color: var(--text-muted); margin-left: 3px; font-weight: 600;">₹</span>
+            </div>
+            <div style="text-align: right; font-size: 12px; font-weight: 700; color: var(--danger); min-width: 85px;" id="posDiscountAmount">- ₹0.00</div>
+          </div>
+        </div>
+
+        <!-- Trade-In Old Phone Exchange Credit Row (Shown if applied) -->
+        <div id="posExchangeRow" style="display: none; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px; color: var(--success);">
+          <span style="display: flex; align-items: center; gap: 4px;">
+            <i class="fas fa-repeat" style="font-size: 10px;"></i>
+            <span>Exchange Credit:</span>
+          </span>
+          <span style="font-weight: 700;" id="posExchangeDiscount">- ₹0.00</span>
+        </div>
+
+        <!-- Pre-Order Token Advance Deduction Row (Shown if applied) -->
+        <div id="posPreorderAdvanceRow" style="display: {% if preorder %}flex{% else %}none{% endif %}; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px; color: #6366f1;">
+          <span style="display: flex; align-items: center; gap: 4px;">
+            <i class="fas fa-ticket" style="font-size: 10px;"></i>
+            <span>Pre-Order Advance ({% if preorder %}#{{ preorder.booking_no }}{% endif %}):</span>
+          </span>
+          <span style="font-weight: 700;" id="posPreorderAdvanceDisplay">- ₹{% if preorder %}{{ "{:,.2f}".format(preorder.token_advance) }}{% else %}0.00{% endif %}</span>
+        </div>
+        <input type="hidden" id="posPreorderId" value="{% if preorder %}{{ preorder.id }}{% endif %}">
+        <input type="hidden" id="posPreorderAdvanceVal" value="{% if preorder %}{{ preorder.token_advance }}{% else %}0{% endif %}">
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px dashed var(--border-color); margin-top: 4px;">
+          <span style="font-size: 15px; font-weight: 800;">Payable Total</span>
+          <span id="posFinalTotal" style="font-size: 20px; font-weight: 800; color: var(--primary);">₹0.00</span>
+        </div>
+
+        <!-- Payment Mode (Aligned Two-Column Layout) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; margin-bottom: 4px;">
+          <label for="paymentModeSelect" style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-wallet" style="color: var(--primary); font-size: 12px;"></i>
+            <span>Payment Mode:</span>
+          </label>
+          <select id="paymentModeSelect" class="form-select" style="width: auto; min-width: 190px; max-width: 225px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; border-radius: var(--radius-md); cursor: pointer;">
+            <option value="Cash">💵 Cash</option>
+            <option value="UPI">⚡ UPI (GPay / PhonePe / Paytm)</option>
+            <option value="Card">💳 Credit / Debit Card</option>
+            <option value="EMI">🗓️ Smart Store EMI</option>
+          </select>
+        </div>
+
+        <!-- EMI Configuration Box (Shown if EMI selected) -->
+        <div id="emiOptionsBox" style="display: none; margin-top: 10px; padding: 12px; background: var(--border-light); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; font-size: 12px; color: var(--warning);">
+              <i class="fas fa-calendar-check"></i> EMI Schedule Setup
+            </div>
+            <span id="posCreditTierBadge" class="badge badge-success" style="display: none; font-size: 11px; font-weight: 700;">
+              Tier-A (760)
+            </span>
+          </div>
+
+          <!-- Customer Credit Profile In-Line Badge & Recommendation -->
+          <div id="posCreditScoreWidget" style="display: none; margin-bottom: 10px; padding: 8px 10px; border-radius: 8px; background: #ffffff; border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;">
+              <span><i class="fas fa-chart-pie" style="color: var(--primary);"></i> CIBIL Score: <strong id="posCreditScoreNum" style="color: var(--text-main); font-weight: 800;">720</strong>/900</span>
+              <span style="color: var(--text-muted);">Min Down Payment: <strong id="posCreditMinDp" style="color: var(--primary); font-weight: 700;">15%</strong></span>
+            </div>
+            <div id="posCreditRiskWarning" style="display: none; margin-top: 6px; font-size: 11px; color: var(--danger); font-weight: 600; line-height: 1.3;">
+              <i class="fas fa-triangle-exclamation"></i> High Risk profile: Customer has overdue history or low credit score. Consider requiring higher down payment.
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+              <label class="form-label" style="font-size: 11px;">Down Payment (₹)</label>
+              <input type="number" id="emiDownPayment" value="5000" min="0" class="form-control" style="padding: 5px 8px; font-size: 12px;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 11px;">Tenure</label>
+              <select id="emiTenureSelect" class="form-select" style="padding: 5px 8px; font-size: 12px;">
+                <option value="3">3 Months</option>
+                <option value="6" selected>6 Months</option>
+                <option value="9">9 Months</option>
+                <option value="12">12 Months</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px;">
+            <span style="color: var(--text-muted);">Est. Monthly EMI:</span>
+            <strong id="emiMonthlyEstimate" style="color: var(--primary);">₹0.00 / mo</strong>
+          </div>
+        </div>
+
+        <!-- Gmail Auto-Send Option -->
+        <div style="margin-top: 12px; padding: 10px 14px; background: rgba(2, 132, 199, 0.08); border: 1.5px solid rgba(2, 132, 199, 0.3); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between;">
+          <label for="autoEmailCheck" style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #0369a1; cursor: pointer; margin-bottom: 0;">
+            <i class="fas fa-envelope-circle-check" style="font-size: 18px; color: #0284c7;"></i>
+            <span>Send bill & PDF invoice via Gmail</span>
+          </label>
+          <input type="checkbox" id="autoEmailCheck" checked style="width: 18px; height: 18px; accent-color: #0284c7; cursor: pointer;">
+        </div>
+
+        <!-- WhatsApp Auto-Send Option -->
+        <div style="margin-top: 8px; padding: 10px 14px; background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between;">
+          <label for="autoWhatsappCheck" style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #065f46; cursor: pointer; margin-bottom: 0;">
+            <i class="fab fa-whatsapp" style="font-size: 18px; color: #10b981;"></i>
+            <span>Send bill & PDF link to WhatsApp</span>
+          </label>
+          <input type="checkbox" id="autoWhatsappCheck" checked style="width: 18px; height: 18px; accent-color: #10b981; cursor: pointer;">
+        </div>
+
+        <!-- Checkout Action Button -->
+        <button type="button" id="checkoutBtn" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 12px; font-size: 14px; font-weight: 700;">
+          <i class="fas fa-check-circle"></i> Complete Sale & Generate Bill
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Checkout Success & WhatsApp Dispatch Floating Window -->
+<div class="modal-overlay" id="checkoutSuccessModal">
+  <div class="modal-box" style="max-width: 520px; padding: 0; overflow: hidden; border-radius: 28px;">
+    <!-- Celebration Banner Header -->
+    <div style="background: linear-gradient(135deg, #059669 0%, #10b981 50%, #0284c7 100%); padding: 24px; text-align: center; color: #ffffff; position: relative;">
+      <div style="width: 58px; height: 58px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5); display: inline-flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.15);">
+        <i class="fas fa-check"></i>
+      </div>
+      <h2 style="font-size: 22px; font-weight: 800; margin: 0; color: #ffffff;">Purchase Completed!</h2>
+      <p style="font-size: 13px; opacity: 0.95; margin-top: 4px;">Official tax invoice & warranty slip generated successfully</p>
+    </div>
+
+    <div style="padding: 24px;">
+      <!-- Invoice Summary Details -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px 18px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Invoice Number:</span>
+          <strong id="successInvoiceNo" style="font-size: 14px; color: var(--primary); font-family: monospace;">INV-XXXX</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Customer:</span>
+          <span style="font-size: 13px; font-weight: 700; color: var(--text-main);" id="successCustName">Walk-in Customer</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">WhatsApp Mobile:</span>
+          <span style="font-size: 13px; font-weight: 700; color: #10b981;" id="successCustPhone">+91 XXXXX XXXXX</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Gmail Delivery:</span>
+          <span style="font-size: 12px; font-weight: 700; color: #0284c7;" id="successCustEmail"><i class="fas fa-paper-plane"></i> Sent with PDF</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Grand Total Paid:</span>
+          <strong id="successFinalAmount" style="font-size: 18px; font-weight: 800; color: var(--text-main);">₹0.00</strong>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Gmail Dispatch Status & Quick Resend -->
+        <div id="successEmailBox" style="background: rgba(2, 132, 199, 0.08); border: 1.5px solid rgba(2, 132, 199, 0.3); border-radius: 14px; padding: 12px 14px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 700; color: #0369a1; display: flex; align-items: center; gap: 6px;">
+              <i class="fas fa-envelope-circle-check" style="font-size: 16px; color: #0284c7;"></i>
+              <span id="modalEmailStatusText">Bill emailed via Gmail</span>
+            </span>
+            <button type="button" id="btnToggleEmailEdit" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 11px;">
+              <i class="fas fa-paper-plane"></i> Send to another email
+            </button>
+          </div>
+          <div id="emailResendContainer" style="display: none; margin-top: 8px;">
+            <div style="display: flex; gap: 6px;">
+              <input type="email" id="modalResendEmailInput" placeholder="customer@gmail.com" class="form-control" style="font-size: 12px; padding: 5px 8px;">
+              <button type="button" id="btnSendModalEmail" class="btn btn-primary btn-sm" style="padding: 5px 12px; font-size: 11px; white-space: nowrap;">
+                Send Now
+              </button>
+            </div>
+            <div id="modalEmailFeedback" style="font-size: 11px; margin-top: 5px; display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Primary WhatsApp Share Button -->
+        <a id="btnSendWhatsapp" href="#" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35); border-radius: 14px; border: none; text-decoration: none;">
+          <i class="fab fa-whatsapp" style="font-size: 20px;"></i>
+          <span>Send Bill to WhatsApp (Includes PDF Link)</span>
+        </a>
+
+        <!-- Direct Share PDF File (Device Share Sheet / WhatsApp) -->
+        <button id="btnSharePdfDirect" type="button" class="btn btn-secondary" style="width: 100%; padding: 11px; font-size: 13px; font-weight: 700; display: none; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; border-color: rgba(37, 99, 235, 0.3); color: #2563eb; background: rgba(37, 99, 235, 0.05);">
+          <i class="fas fa-share-nodes"></i>
+          <span>Share PDF Document File Directly</span>
+        </button>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <a id="btnDownloadPdf" href="#" class="btn btn-secondary" style="padding: 10px; font-size: 12.5px; font-weight: 700; justify-content: center;">
+            <i class="fas fa-file-pdf" style="color: #ef4444;"></i> Download PDF Bill
+          </a>
+          <a id="btnViewReceipt" href="#" class="btn btn-secondary" style="padding: 10px; font-size: 12.5px; font-weight: 700; justify-content: center;">
+            <i class="fas fa-receipt" style="color: var(--primary);"></i> View Digital Receipt
+          </a>
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="window.location.reload();" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 700; margin-top: 4px; justify-content: center;">
+          <i class="fas fa-plus"></i> Start Next Sale
+        </button>
+      </div>
+
+      <div style="margin-top: 14px; padding: 10px 12px; background: rgba(2, 132, 199, 0.06); border: 1px solid rgba(2, 132, 199, 0.2); border-radius: 10px; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-circle-info" style="color: var(--primary); font-size: 14px; flex-shrink: 0;"></i>
+        <span>Customer receives the itemized bill (devices, IMEIs, accessories) and a direct link to download the official PDF invoice on WhatsApp.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Embedded AI Phone Exchange Appraiser -->
+<div class="modal-overlay" id="posExchangeModal">
+  <div class="modal-box" style="max-width: 650px;">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-wand-magic-sparkles"></i> AI Phone Trade-In Valuation</div>
+      <button onclick="closeModal('posExchangeModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <div style="padding: 24px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Old Phone Brand</label>
+          <select id="modalExBrand" class="form-select" onchange="calcPosExchange()">
+            <option value="Apple">Apple iPhone</option>
+            <option value="Samsung" selected>Samsung</option>
+            <option value="OnePlus">OnePlus</option>
+            <option value="Xiaomi">Xiaomi / Redmi</option>
+            <option value="Realme">Realme</option>
+            <option value="Vivo">Vivo</option>
+            <option value="Oppo">Oppo</option>
+            <option value="Other">Other Brand</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Model Name</label>
+          <input type="text" id="modalExModel" value="Galaxy S21" class="form-control" oninput="calcPosExchange()">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Launch Price (₹)</label>
+          <input type="number" id="modalExOrigPrice" value="35000" class="form-control" oninput="calcPosExchange()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age in Months: <span id="modalAgeDisplay">14</span> Mo</label>
+          <input type="range" id="modalExAge" min="1" max="48" value="14" style="width: 100%;" oninput="document.getElementById('modalAgeDisplay').textContent=this.value; calcPosExchange();">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Screen Condition</label>
+          <select id="modalExScreen" class="form-select" onchange="calcPosExchange()">
+            <option value="Flawless">Flawless (No Scratches)</option>
+            <option value="Minor Scratches" selected>Minor Scratches</option>
+            <option value="Cracked Glass">Cracked Glass</option>
+            <option value="Touch / Display Issues">Touch / Display Issues</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Battery Health: <span id="modalBatDisplay">84</span>%</label>
+          <input type="range" id="modalExBat" min="60" max="100" value="84" style="width: 100%;" oninput="document.getElementById('modalBatDisplay').textContent=this.value; calcPosExchange();">
+        </div>
+      </div>
+
+      <!-- AI Live Valuation Card -->
+      <div style="background: var(--border-light); padding: 16px; border-radius: var(--radius-md); text-align: center; margin: 16px 0;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">AI Machine Learning Estimated Trade-In Value</div>
+        <div id="modalExCalculatedValue" style="font-size: 26px; font-weight: 800; color: var(--primary); margin: 6px 0;">₹11,400</div>
+        <span class="badge badge-success" id="modalExGradeBadge">Grade B (Good)</span>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('posExchangeModal')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="applyExchangeModalToBill()">
+          <i class="fas fa-plus"></i> Apply Trade-In Discount to Bill
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let modalValuationResult = null;
+
+  function calcPosExchange() {
+    const brand = document.getElementById('modalExBrand').value;
+    const model = document.getElementById('modalExModel').value;
+    const origPrice = parseFloat(document.getElementById('modalExOrigPrice').value || 30000);
+    const age = parseInt(document.getElementById('modalExAge').value || 12);
+    const screen = document.getElementById('modalExScreen').value;
+    const bat = parseInt(document.getElementById('modalExBat').value || 85);
+
+    fetch('/exchange/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand: brand,
+        model: model,
+        original_price: origPrice,
+        age_months: age,
+        storage: '128GB',
+        battery_health: bat,
+        screen_condition: screen,
+        body_condition: 'Good',
+        camera_ok: true,
+        biometrics_ok: true
+      })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) {
+        modalValuationResult = res.data;
+        document.getElementById('modalExCalculatedValue').textContent = `₹${res.data.offered_exchange_value.toLocaleString()}`;
+        document.getElementById('modalExGradeBadge').textContent = res.data.condition_grade;
+      }
+    });
+  }
+
+  function applyExchangeModalToBill() {
+    if (modalValuationResult) {
+      applyExchangeToBill(modalValuationResult);
+      closeModal('posExchangeModal');
+    }
+  }
+
+  // Calc once on page ready
+  document.addEventListener('DOMContentLoaded', () => {
+    calcPosExchange();
+  });
+</script>
+
+<!-- Modal: Quick Add Customer in POS -->
+<div class="modal-overlay" id="posQuickAddCustomerModal">
+  <div class="modal-box" style="max-width: 460px;">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-user-plus" style="color: var(--primary);"></i> Register & Select Customer</div>
+      <button type="button" onclick="closeModal('posQuickAddCustomerModal')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <form id="posQuickAddCustomerForm" style="padding: 20px;">
+      <div class="form-group">
+        <label class="form-label">Customer Name *</label>
+        <input type="text" id="modalCustName" placeholder="Full Name (e.g. Rahul Sharma)" class="form-control" required>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Phone Number *</label>
+          <input type="text" id="modalCustPhone" placeholder="10-digit mobile" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email (Optional)</label>
+          <input type="email" id="modalCustEmail" placeholder="for receipts" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">City / Address</label>
+        <input type="text" id="modalCustAddress" placeholder="Street, city or landmark" class="form-control">
+      </div>
+      <div id="modalCustAlert" style="display: none; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; margin-top: 10px;"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('posQuickAddCustomerModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="btnSubmitModalCustomer">
+          <i class="fas fa-check"></i> Register & Select
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pos.js') }}"></script>
+{% if preorder %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Select customer automatically
+    const custSelect = document.getElementById('customerSelect');
+    if (custSelect) {
+      custSelect.value = "{{ preorder.customer_id }}";
+      custSelect.dispatchEvent(new Event('change'));
+    }
+    const nameInput = document.getElementById('customerNameInput');
+    const phoneInput = document.getElementById('customerPhoneInput');
+    if (nameInput) nameInput.value = "{{ preorder.customer.name }}";
+    if (phoneInput) phoneInput.value = "{{ preorder.customer.phone }}";
+
+    // Auto-add allocated handset if present
+    {% if preorder.allocated_mobile %}
+    setTimeout(() => {
+      addToCart({
+        id: {{ preorder.allocated_mobile.id }},
+        type: "mobile",
+        name: "{{ preorder.allocated_mobile.brand }} {{ preorder.allocated_mobile.model }} ({{ preorder.allocated_mobile.ram }}/{{ preorder.allocated_mobile.storage }})",
+        price: {{ preorder.allocated_mobile.selling_price }},
+        imei: "{{ preorder.allocated_mobile.imei_1 }}",
+        stock: 1
+      });
+    }, 200);
+    {% endif %}
+  });
+</script>
+{% endif %}
+{% endblock %}

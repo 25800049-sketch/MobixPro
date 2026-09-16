@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}Payments & Collections — MOBIX ERP{% endblock %}
+{% block header_title %}Payments & Transactions{% endblock %}
+
+{% block content %}
+<!-- KPI Metrics Row for Payments -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Total Collected</div>
+      <div class="kpi-value" style="color: var(--primary);">₹{{ "{:,.2f}".format(total_collections) }}</div>
+      <div class="kpi-sub" style="color: #10b981;">
+        <i class="fas fa-arrow-trend-up"></i> All time revenue collected
+      </div>
+    </div>
+    <div class="kpi-icon icon-sales">
+      <i class="fas fa-hand-holding-dollar"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">UPI & Digital</div>
+      <div class="kpi-value" style="color: var(--primary);">₹{{ "{:,.2f}".format(upi_total) }}</div>
+      <div class="kpi-sub">
+        <i class="fas fa-qrcode"></i> Instant QR & UPI payments
+      </div>
+    </div>
+    <div class="kpi-icon icon-stock">
+      <i class="fas fa-mobile-screen"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">Cash Collections</div>
+      <div class="kpi-value" style="color: #a855f7;">₹{{ "{:,.2f}".format(cash_total) }}</div>
+      <div class="kpi-sub">
+        <i class="fas fa-money-bill-wave"></i> Retail register cash
+      </div>
+    </div>
+    <div class="kpi-icon icon-repair">
+      <i class="fas fa-coins"></i>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div>
+      <div class="kpi-title">EMI Recoveries</div>
+      <div class="kpi-value" style="color: #f59e0b;">₹{{ "{:,.2f}".format(emi_collected) }}</div>
+      <div class="kpi-sub">
+        <i class="fas fa-calendar-check"></i> Monthly installments paid
+      </div>
+    </div>
+    <div class="kpi-icon icon-emi">
+      <i class="fas fa-credit-card"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Transactions Table Card -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fas fa-list-check" style="color: var(--primary);"></i>
+      <span>Recent Invoice Payments & Receipts</span>
+    </div>
+    <a href="{{ url_for('pos.invoices_list') }}" class="btn btn-secondary btn-sm">All Invoices</a>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Txn Ref / Invoice</th>
+            <th>Date & Time</th>
+            <th>Customer</th>
+            <th>Mode</th>
+            <th>Payment Status</th>
+            <th>Total Amount</th>
+            <th>Receipt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in recent_invoices %}
+          <tr>
+            <td><strong>#{{ inv.invoice_number }}</strong></td>
+            <td>{{ inv.created_at.strftime('%d-%b-%Y %H:%M') }}</td>
+            <td>
+              <strong>{{ inv.customer.name }}</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ inv.customer.phone }}</div>
+            </td>
+            <td><span class="badge badge-info">{{ inv.payment_mode }}</span></td>
+            <td>
+              <span class="badge {% if inv.payment_status == 'Paid' %}badge-success{% else %}badge-warning{% endif %}">
+                {{ inv.payment_status }}
+              </span>
+            </td>
+            <td style="font-weight: 800; color: var(--text-main);">₹{{ "{:,.2f}".format(inv.final_total) }}</td>
+            <td>
+              <a href="{{ url_for('pos.view_invoice', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm" style="padding: 3px 8px;">
+                <i class="fas fa-receipt"></i> Bill
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 28px;">No transactions found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Recent EMI Installment Payments -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fas fa-credit-card" style="color: #a855f7;"></i>
+      <span>Recent EMI Installments Cleared</span>
+    </div>
+    <a href="{{ url_for('emi.emi_list') }}" class="btn btn-secondary btn-sm">Manage EMI</a>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Installment #</th>
+            <th>Customer</th>
+            <th>Paid Date</th>
+            <th>Principal Due</th>
+            <th>Late Fine</th>
+            <th>Total Paid</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inst in paid_installments %}
+          <tr>
+            <td><strong>#Inst {{ inst.installment_no }}</strong></td>
+            <td>
+              {% if inst.account and inst.account.customer %}
+                <strong>{{ inst.account.customer.name }}</strong>
+                <div style="font-size: 11px; color: var(--text-muted);">{{ inst.account.customer.phone }}</div>
+              {% else %}
+                <strong>Walk-in EMI Settlement</strong>
+                <div style="font-size: 11px; color: var(--text-muted);">Contract #{{ inst.emi_account_id }}</div>
+              {% endif %}
+            </td>
+            <td>{{ inst.payment_date.strftime('%d-%b-%Y') if inst.payment_date else 'N/A' }}</td>
+            <td>₹{{ "{:,.2f}".format(inst.amount) }}</td>
+            <td>₹{{ "{:,.2f}".format(inst.fine_amount) }}</td>
+            <td style="font-weight: 700; color: #10b981;">₹{{ "{:,.2f}".format(inst.amount + inst.fine_amount) }}</td>
+            <td><span class="badge badge-success">CLEARED</span></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No cleared EMI installments recorded yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}MOBIXPRO — Mobile Shop Management System{% endblock %}</title>
+  
+  <!-- Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Custom Cyberpunk Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <!-- Background Mobile Floating Universe -->
+  <div class="floating-mobile-universe" id="floatingMobileUniverse" aria-hidden="true">
+    <div class="floating-universe-inner">
+      <!-- Ambient Glow Orbs -->
+      <div class="floating-glow-orb orb-cyan"></div>
+      <div class="floating-glow-orb orb-indigo"></div>
+      <div class="floating-glow-orb orb-magenta"></div>
+
+      <!-- 1. Flagship 3D Smartphone (Top-Left Perspective) -->
+      <div class="floating-phone-flagship">
+        <div class="phone-inner-frame">
+          <div>
+            <div class="phone-dynamic-island">
+              <div class="island-camera-dot"></div>
+              <div class="island-sensor-dot"></div>
+            </div>
+            <div class="phone-status-bar">
+              <span>09:41</span>
+              <span><i class="fas fa-signal" style="font-size: 7px;"></i> 5G <i class="fas fa-battery-full" style="font-size: 8px;"></i></span>
+            </div>
+          </div>
+
+          <div class="phone-screen-widget">
+            <div class="widget-title"><i class="fas fa-bolt"></i> MOBIX PRO STORE</div>
+            <div class="widget-value">₹84,999</div>
+            <div class="widget-sub"><i class="fas fa-circle-check"></i> iPhone 16 Pro Max Sold</div>
+          </div>
+
+          <div>
+            <div class="phone-apps-row">
+              <div class="mini-app-icon app-pos"><i class="fas fa-cash-register"></i></div>
+              <div class="mini-app-icon app-repair"><i class="fas fa-wrench"></i></div>
+              <div class="mini-app-icon app-ai"><i class="fas fa-wand-magic-sparkles"></i></div>
+            </div>
+            <div class="phone-home-indicator"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Futuristic Holographic Phone (Bottom-Right Perspective) -->
+      <div class="floating-phone-holo">
+        <div class="holo-circuits-bg"></div>
+        <div>
+          <div class="holo-punch-hole"></div>
+          <div class="phone-status-bar" style="color: #a5b4fc; font-size: 8px; margin-top: 6px;">
+            <span>ULTRA FOLD</span>
+            <span><i class="fas fa-wifi" style="font-size: 7px;"></i> 98%</span>
+          </div>
+        </div>
+
+        <div class="holo-wave-container">
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+          <div class="holo-wave-bar"></div>
+        </div>
+
+        <div class="holo-info-chip">
+          <div class="holo-chip-text">AI VALUATION CORE</div>
+          <div class="holo-chip-metric"><i class="fas fa-microchip" style="color: #6366f1;"></i> 3.2 GHz SNAPDRAGON</div>
+        </div>
+      </div>
+
+      <!-- 3. Optical Depth Orbit Phone (Top-Right Depth of Field) -->
+      <div class="floating-phone-orbit">
+        <div class="orbit-camera-bump">
+          <div class="orbit-lens-mini"></div>
+          <div class="orbit-lens-mini"></div>
+          <div class="orbit-lens-mini"></div>
+        </div>
+      </div>
+
+      <!-- 4. Floating Mobile Tech Satellites -->
+      <div class="tech-satellite satellite-chip" title="5G Bionic Core">
+        <i class="fas fa-microchip"></i>
+      </div>
+
+      <div class="tech-satellite satellite-lens" title="Aperture Camera Lens">
+        <i class="fas fa-circle-notch"></i>
+      </div>
+
+      <div class="tech-satellite satellite-repair" title="Mobile Service Hub">
+        <i class="fas fa-screwdriver-wrench"></i>
+      </div>
+
+      <div class="tech-satellite satellite-bolt" title="Super Fast Charge">
+        <i class="fas fa-bolt"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <!-- Cyberpunk Sidebar Navigation -->
+    <aside class="app-sidebar" id="appSidebar">
+      <a href="{% if session.get('role') == 'technician' %}{{ url_for('repairs.repair_list') }}{% elif session.get('role') == 'cashier' %}{{ url_for('pos.billing') }}{% else %}{{ url_for('dashboard.index') }}{% endif %}" class="sidebar-brand" style="text-decoration: none;">
+        <div class="brand-icon">
+          <i class="fas fa-mobile-screen-button"></i>
+        </div>
+        <div>
+          <div class="brand-text">MOBIXPRO</div>
+          <div class="brand-sub">Mobile Shop System</div>
+        </div>
+      </a>
+
+      <div class="sidebar-menu">
+        {% if session.get('role') == 'technician' %}
+        <!-- Technician Workspace -->
+        <div class="menu-category">Mobile Service Workbench</div>
+        <a href="{{ url_for('repairs.repair_list') }}" class="nav-link {% if request.endpoint and 'repair' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-wrench"></i>
+          <span>Repairs Tracking</span>
+        </a>
+        <a href="{{ url_for('payroll.attendance_page') }}" class="nav-link {% if request.endpoint and 'attendance' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-clipboard-user"></i>
+          <span>Technician Attendance</span>
+        </a>
+        {% else %}
+        <!-- Admin & Cashier Workspace -->
+        <div class="menu-category">Main Menu</div>
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+          <i class="fas fa-chart-pie"></i>
+          <span>Dashboard</span>
+        </a>
+        {% endif %}
+
+        {% if session.get('role') in ['admin', 'cashier'] %}
+        <a href="{{ url_for('pos.billing') }}" class="nav-link {% if request.endpoint == 'pos.billing' %}active{% endif %}">
+          <i class="fas fa-cash-register"></i>
+          <span>Sales & POS</span>
+        </a>
+        <a href="{{ url_for('pos.invoices_list') }}" class="nav-link {% if request.endpoint and 'invoices' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-file-invoice-dollar"></i>
+          <span>Invoices</span>
+        </a>
+        <a href="{{ url_for('inventory.mobiles_list') }}" class="nav-link {% if request.endpoint and 'mobiles' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-mobile-screen"></i>
+          <span>Mobiles (Phones)</span>
+        </a>
+        <a href="{{ url_for('inventory.accessories_list') }}" class="nav-link {% if request.endpoint and 'accessories' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-headphones-simple"></i>
+          <span>Accessories</span>
+        </a>
+        <a href="{{ url_for('customers.customer_list') }}" class="nav-link {% if request.endpoint and 'customers' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-users"></i>
+          <span>Customers</span>
+        </a>
+        <a href="{{ url_for('payments.payments_list') }}" class="nav-link {% if request.endpoint and 'payments' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-credit-card"></i>
+          <span>Payments</span>
+        </a>
+        {% endif %}
+
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('reports.reports_overview') }}" class="nav-link {% if request.endpoint and 'reports' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-chart-simple"></i>
+          <span>Reports</span>
+        </a>
+        {% endif %}
+
+        <div class="menu-category">Services & Finance</div>
+        {% if session.get('role') in ['admin', 'cashier'] %}
+        <a href="{{ url_for('emi.emi_list') }}" class="nav-link {% if request.endpoint and 'emi' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-calendar-check"></i>
+          <span>EMI Finance</span>
+        </a>
+        {% endif %}
+
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('repairs.repair_list') }}" class="nav-link {% if request.endpoint and 'repair' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-wrench"></i>
+          <span>Repairs Tracking</span>
+        </a>
+        {% endif %}
+
+        {% if session.get('role') in ['admin', 'cashier'] %}
+        <a href="{{ url_for('exchange.exchange_page') }}" class="nav-link {% if request.endpoint and 'exchange' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-wand-magic-sparkles"></i>
+          <span>AI Exchange Value</span>
+        </a>
+        <a href="{{ url_for('preorders.index') }}" class="nav-link {% if request.endpoint and 'preorder' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-ticket"></i>
+          <span>Pre-Orders & Waitlist</span>
+        </a>
+        {% endif %}
+
+        {% if session.get('role') == 'cashier' %}
+        <a href="{{ url_for('payroll.attendance_page') }}" class="nav-link {% if request.endpoint and 'attendance' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-clipboard-user"></i>
+          <span>Cashier Attendance</span>
+        </a>
+        {% elif session.get('role') == 'admin' %}
+        <a href="{{ url_for('payroll.attendance_page') }}" class="nav-link {% if request.endpoint and 'attendance' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-clipboard-user"></i>
+          <span>Staff Attendance</span>
+        </a>
+        {% endif %}
+
+        {% if session.get('role') == 'admin' %}
+        <div class="menu-category">Administration</div>
+        <a href="{{ url_for('payroll.salary_page') }}" class="nav-link {% if request.endpoint and ('salary' in request.endpoint or 'payslip' in request.endpoint) %}active{% endif %}">
+          <i class="fas fa-money-check-dollar"></i>
+          <span>Salary & Payroll</span>
+        </a>
+        <a href="{{ url_for('suppliers.supplier_list') }}" class="nav-link {% if request.endpoint and 'suppliers' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-truck-field"></i>
+          <span>Suppliers</span>
+        </a>
+        <a href="{{ url_for('users.users_list') }}" class="nav-link {% if request.endpoint and 'users' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-user-shield"></i>
+          <span>Users & Staff</span>
+        </a>
+        <a href="{{ url_for('settings.settings_page') }}" class="nav-link {% if request.endpoint and 'settings' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-gear"></i>
+          <span>Settings</span>
+        </a>
+        {% endif %}
+        {% endif %}
+      </div>
+
+
+
+      <!-- User Profile Footer -->
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar">
+            {{ session.get('full_name', 'User')[:1] }}
+          </div>
+          <div class="user-info">
+            <div class="user-name-text" title="{{ session.get('full_name', 'Guest') }}">{{ session.get('full_name', 'Guest').split(' (')[0] }}</div>
+            <span class="user-role-tag">{{ session.get('role', 'User') }}</span>
+          </div>
+        </div>
+        <a href="{{ url_for('auth.logout') }}" title="Sign Out" class="sidebar-logout-btn">
+          <i class="fas fa-arrow-right-from-bracket"></i>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- Top Navigation Bar -->
+      <header class="app-navbar">
+        <div class="navbar-left">
+          <button class="mobile-toggle" id="mobile-toggle-btn" aria-label="Toggle Menu" onclick="document.getElementById('appSidebar').classList.toggle('open')">
+            <i class="fas fa-bars"></i>
+          </button>
+          <h1 class="page-title">{% block header_title %}Overview{% endblock %}</h1>
+        </div>
+
+        <div class="navbar-right">
+          <!-- Global Search Input -->
+          <div class="navbar-search">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search devices, IMEI, customers..." id="globalSearchInput" onkeydown="if(event.key==='Enter') window.location.href='/inventory/mobiles?q=' + encodeURIComponent(this.value)">
+          </div>
+
+          <!-- Notification Bell with Glowing Badge -->
+          <div class="btn-icon-pill" title="Notifications & System Alerts" onclick="window.location.href='{% if session.get('role') == 'technician' %}{{ url_for('repairs.repair_list') }}{% else %}{{ url_for('dashboard.index') }}{% endif %}'">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge-dot"></span>
+          </div>
+
+          <!-- Floating Mobile Theme Toggle -->
+          <button type="button" class="btn-icon-pill" id="floating-theme-toggle-btn" title="Toggle Floating Mobile Background" aria-label="Toggle Floating Mobile Background" style="cursor: pointer; background: transparent; border: 1px solid var(--border-color); color: var(--primary);">
+            <i class="fas fa-mobile-screen"></i>
+            <span class="floating-theme-indicator" id="floatingThemeIndicator" title="Floating Theme Active"></span>
+          </button>
+
+          <!-- Dark / Light Theme Toggle -->
+          <button type="button" class="btn-icon-pill" id="theme-toggle-btn" title="Toggle Dark / Light Theme" aria-label="Toggle Theme" style="cursor: pointer; background: transparent; border: 1px solid var(--border-color); color: var(--text-main);">
+            <i class="fas fa-moon" id="theme-toggle-icon"></i>
+          </button>
+
+          <!-- Quick Action Button -->
+          {% if session.get('role') in ['admin', 'cashier'] %}
+          <a href="{{ url_for('pos.billing') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-bolt"></i>
+            <span>New Sale</span>
+          </a>
+          {% elif session.get('role') == 'technician' %}
+          <a href="{{ url_for('repairs.repair_list') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-wrench"></i>
+            <span>Work Desk</span>
+          </a>
+          {% endif %}
+
+          <!-- User Profile Pill -->
+          <div class="admin-profile-pill" onclick="window.location.href='{{ url_for('settings.settings_page') if session.get('role')=='admin' else '#' }}'" title="{{ session.get('full_name', 'User') }}">
+            <div class="user-avatar" style="width: 28px; height: 28px; font-size: 11px;">
+              {{ session.get('full_name', 'A')[:1] }}
+            </div>
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-main);">{{ session.get('full_name', 'Admin').split(' (')[0].split(' ')[0] }}</span>
+            <i class="fas fa-chevron-down" style="font-size: 10px; color: var(--text-muted);"></i>
+          </div>
+
+          <!-- Logout Button -->
+          <a href="{{ url_for('auth.logout') }}" class="btn btn-sm" title="Sign Out" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 700; border-radius: var(--radius-sm); text-decoration: none; padding: 6px 12px; gap: 6px;">
+            <i class="fas fa-arrow-right-from-bracket"></i>
+            <span>Logout</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="page-body">
+        <!-- Flash Message Alerts -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                <i class="fas {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </div>
+
+      <!-- Glowing Neon Footer Tagline (Reference Mockup) -->
+      <footer class="app-footer">
+        <div class="footer-tagline">Your Shop • Your Success</div>
+        <div class="footer-copy">MOBIXPRO — Advanced Mobile Shop & Inventory POS System • All Systems Operational</div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

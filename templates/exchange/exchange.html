@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Exchange & Phone Valuation — MOBIX{% endblock %}
+{% block header_title %}AI-Assisted Smart Phone Valuation & Trade-In Engine{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 28px;">
+  <!-- Left: Interactive AI Appraisal Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fas fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+        <span>Old Device Appraisal Inputs</span>
+      </div>
+      <span class="badge badge-primary">Scikit-Learn ML Engine</span>
+    </div>
+    <form id="aiValuationForm" method="POST" action="{{ url_for('exchange.save_record') }}" style="padding: 24px;">
+      <!-- Customer Link -->
+      <div class="form-group">
+        <label class="form-label">Customer (Optional)</label>
+        <select name="customer_id" class="form-select">
+          <option value="">-- Walk-in / Anonymous Appraisal --</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}">{{ c.name }} ({{ c.phone }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Device Specs -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Brand</label>
+          <select id="exBrand" name="brand" class="form-select">
+            <option value="Apple">Apple iPhone</option>
+            <option value="Samsung" selected>Samsung Galaxy</option>
+            <option value="OnePlus">OnePlus</option>
+            <option value="Google">Google Pixel</option>
+            <option value="Xiaomi">Xiaomi / Redmi</option>
+            <option value="Realme">Realme</option>
+            <option value="Vivo">Vivo</option>
+            <option value="Oppo">Oppo</option>
+            <option value="Motorola">Motorola</option>
+            <option value="Other">Other Brand</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Model Name</label>
+          <input type="text" id="exModel" name="model" value="Galaxy S22 5G" class="form-control" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Launch Price (₹)</label>
+          <input type="number" id="exOrigPrice" name="original_price" value="52000" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Internal Storage</label>
+          <select id="exStorage" name="storage" class="form-select">
+            <option value="64GB">64 GB</option>
+            <option value="128GB" selected>128 GB</option>
+            <option value="256GB">256 GB</option>
+            <option value="512GB">512 GB</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Old IMEI (Optional)</label>
+          <input type="text" id="exImei" name="imei" placeholder="15-digit IMEI" class="form-control">
+        </div>
+      </div>
+
+      <!-- Sliders for Age and Battery -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px;">
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <label class="form-label" style="margin: 0;">Device Age</label>
+            <strong id="ageMonthsDisplay" style="color: var(--primary);">14 Months</strong>
+          </div>
+          <input type="range" id="ageMonthsSlider" name="age_months" min="1" max="48" value="14" style="width: 100%;">
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+            <span>1 mo (Brand New)</span>
+            <span>24 mo (2 yrs)</span>
+            <span>48 mo (4 yrs)</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <label class="form-label" style="margin: 0;">Battery Health</label>
+            <strong id="batteryHealthDisplay" style="color: var(--success);">88%</strong>
+          </div>
+          <input type="range" id="batteryHealthSlider" name="battery_health" min="50" max="100" value="88" style="width: 100%;">
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+            <span>50% (Degraded)</span>
+            <span>80% (Average)</span>
+            <span>100% (Peak)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cosmetic & Physical Condition -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px;">
+        <div class="form-group">
+          <label class="form-label">Screen & Display Condition</label>
+          <select id="exScreenCond" name="condition_screen" class="form-select">
+            <option value="Flawless">✨ Flawless (Zero Scratches)</option>
+            <option value="Minor Scratches" selected>⚡ Minor Hairline Scratches</option>
+            <option value="Cracked Glass">⚠️ Cracked Outer Glass</option>
+            <option value="Touch / Display Issues">❌ Lines / Touch Dead Spots</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Body & Frame Condition</label>
+          <select id="exBodyCond" name="condition_body" class="form-select">
+            <option value="Mint">✨ Mint (Like New)</option>
+            <option value="Good" selected>👍 Good (Normal Wear)</option>
+            <option value="Scratched">⚡ Heavy Scratches on Bezel</option>
+            <option value="Dented / Bent">❌ Dented / Bent Frame</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Functional Checkboxes -->
+      <div style="display: flex; gap: 24px; margin-top: 8px; padding: 12px; background: var(--border-light); border-radius: var(--radius-md);">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+          <input type="checkbox" id="exCameraOk" checked style="width: 16px; height: 16px;">
+          <span>Front & Rear Cameras Working</span>
+        </label>
+
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+          <input type="checkbox" id="exBiometricsOk" checked style="width: 16px; height: 16px;">
+          <span>Fingerprint / Face ID Working</span>
+        </label>
+      </div>
+
+      <!-- Hidden inputs for submission -->
+      <input type="hidden" id="hidAiMarketValue" name="ai_estimated_value" value="0">
+      <input type="hidden" id="hidOfferedValue" name="offered_value" value="0">
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-floppy-disk"></i> Save Valuation to Trade-in Log
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Right: AI Live Prediction Dashboard -->
+  <div>
+    <!-- Estimated Valuation Hero Card -->
+    <div class="card" style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(14, 165, 233, 0.12)); border-color: rgba(79, 70, 229, 0.35);">
+      <div class="card-body" style="text-align: center; padding: 32px 24px;">
+        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--secondary); margin-bottom: 6px;">
+          Recommended Store Exchange Offer
+        </div>
+        <div id="aiOfferedValue" style="font-size: 42px; font-weight: 800; color: var(--primary); letter-spacing: -1px; margin-bottom: 8px;">
+          ₹0
+        </div>
+        <div style="display: inline-flex; align-items: center; gap: 8px;">
+          <span class="badge badge-success" id="aiGradeBadge" style="font-size: 13px; padding: 5px 12px;">Grade A (Good)</span>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color); text-align: left;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+            <span style="color: var(--text-muted);">Fair Market Resale Value:</span>
+            <strong id="aiMarketValue" style="color: var(--text-main);">₹0</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px;">
+            <span style="color: var(--text-muted);">Estimated Depreciation:</span>
+            <span id="aiDepreciationText" style="color: var(--danger); font-weight: 600;">55%</span>
+          </div>
+
+          <!-- Depreciation Progress Bar -->
+          <div style="width: 100%; height: 8px; background: var(--border-color); border-radius: var(--radius-full); overflow: hidden;">
+            <div id="aiDepreciationMeter" style="width: 55%; height: 100%; background: linear-gradient(90deg, var(--secondary), var(--danger)); border-radius: var(--radius-full); transition: width 0.3s ease;"></div>
+          </div>
+        </div>
+
+        <div style="margin-top: 24px;">
+          <a href="{{ url_for('pos.billing') }}" class="btn btn-primary" style="width: 100%;">
+            <i class="fas fa-cart-shopping"></i> Go to POS & Apply Exchange Discount
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- How AI Valuation Works Explanation Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title" style="font-size: 14px;"><i class="fas fa-brain"></i> Valuation Model Architecture</div>
+      </div>
+      <div class="card-body" style="font-size: 12.5px; color: var(--text-muted); line-height: 1.6;">
+        <p>• <strong>Brand Value Retention:</strong> Apple (1.0x retention factor) and Samsung Flagships (0.9x) retain higher resale multiples over 36 months than budget tiers.</p>
+        <p style="margin-top: 6px;">• <strong>Age Depreciation Curve:</strong> Evaluated using exponential decay <code style="color: var(--secondary);">e^(-0.028 × months)</code> trained on actual secondary mobile market prices.</p>
+        <p style="margin-top: 6px;">• <strong>Hardware Penalties:</strong> Screen damage deducts up to 60%; battery health below 80% applies non-linear battery replacement cost deductions.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Valuation History Table -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-clock-rotate-left"></i> Recent Exchange Valuations & Trade-Ins</div>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Device</th>
+            <th>Original Price</th>
+            <th>Age</th>
+            <th>Battery</th>
+            <th>Screen Condition</th>
+            <th>AI Market Value</th>
+            <th>Offered Exchange</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+          <tr>
+            <td>{{ r.created_at.strftime('%d-%b-%Y %H:%M') }}</td>
+            <td>{{ r.customer.name if r.customer else 'Walk-in' }}</td>
+            <td><strong>{{ r.brand }} {{ r.model }}</strong></td>
+            <td>₹{{ "{:,.0f}".format(r.original_price) }}</td>
+            <td>{{ r.age_months }} Mo</td>
+            <td>{{ r.battery_health }}%</td>
+            <td>{{ r.condition_screen }}</td>
+            <td>₹{{ "{:,.2f}".format(r.ai_estimated_value) }}</td>
+            <td style="font-weight: 800; color: var(--primary);">₹{{ "{:,.2f}".format(r.offered_value) }}</td>
+            <td>
+              <span class="badge {% if r.status == 'Applied_To_Bill' %}badge-success{% else %}badge-info{% endif %}">
+                {{ r.status.replace('_', ' ') }}
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">No trade-in records logged yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/exchange.js') }}"></script>
+{% endblock %}
