@@ -97,6 +97,13 @@ def create_app(config_class=Config):
                 if 'salary_type' not in user_cols:
                     cursor.execute("ALTER TABLE users ADD COLUMN salary_type VARCHAR(20) DEFAULT 'monthly';")
 
+                cursor.execute("PRAGMA table_info(repair_tickets);")
+                repair_cols = [row[1] for row in cursor.fetchall()]
+                if 'payment_status' not in repair_cols:
+                    cursor.execute("ALTER TABLE repair_tickets ADD COLUMN payment_status VARCHAR(20) DEFAULT 'Unpaid';")
+                if 'payment_mode' not in repair_cols:
+                    cursor.execute("ALTER TABLE repair_tickets ADD COLUMN payment_mode VARCHAR(30) DEFAULT 'Cash';")
+
                 conn.connection.commit()
         except Exception:
             pass
