@@ -73,11 +73,8 @@ def create_app(config_class=Config):
 
     @app.errorhandler(500)
     def internal_error(error):
-        import traceback
-        err_msg = traceback.format_exc()
-        print("[ERROR 500]", err_msg)
         db.session.rollback()
-        return f"<div style='background:#1e1e2f; color:#ff6b6b; padding:30px; font-family:monospace; border-radius:10px; margin:20px;'><h2 style='color:#fff;'>MOBIX Server Error</h2><pre style='white-space:pre-wrap; font-size:13px; color:#f8f9fa;'>{err_msg}</pre></div>", 500
+        return render_template('base.html'), 500
 
 
     # Auto-initialize database tables & seed data on startup
